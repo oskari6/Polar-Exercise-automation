@@ -1,5 +1,6 @@
 # Application for reading exercise data (Windows)
-  ![image](https://github.com/user-attachments/assets/d7534f82-2ec5-4a68-933b-cadec71b1dda)
+![image](https://github.com/user-attachments/assets/ef5809ad-8e7d-4993-ad6b-99b793263bde)
+![image](https://github.com/user-attachments/assets/0fdae245-c94c-4d54-b051-67eacf69247d)
 - you will need the following:
 - polar account
 - accesslink user id, token, client id, client secret
