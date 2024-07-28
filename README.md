@@ -25,5 +25,5 @@
 # Automation
 - The excel_shoes script gets executed with a .bat script
 - The data gets fetched with Windows Task scheduler, through an virtual environment with the help of .bat script
-  ![image](https://github.com/user-attachments/assets/c4f943ec-000d-4287-931c-f136f7b6f233)
+![image](https://github.com/user-attachments/assets/00a75898-cf9e-493f-964b-4b34eb458a39)
   ![image](https://github.com/user-attachments/assets/85c123ec-7204-4d78-9db7-effe0753a1cf)
