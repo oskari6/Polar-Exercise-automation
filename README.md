@@ -13,7 +13,7 @@
 - gets exercise data for running/treadmill running exercises for the last 30 days
 - gets weather temperature from meteostat api, with exercise startime and lat,lon coordinates
 - Saves the data to sqlite database
-- # Functionality (excel_shoes.py)
+# Functionality (excel_shoes.py)
 - with the help from vba script in excel
 - converts shoe km usage from days where 2 pairs were used in 1 exercise, into one cell
 - script gets triggered fro mpressing enter on the cell, wether 1-2 chars or more are entered
