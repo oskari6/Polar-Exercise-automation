@@ -6,7 +6,7 @@ def extract_and_move_values():
     target_ws = wb.sheets['2024']
 
     # Define the ranges
-    source_range = source_ws.range("D2:D368")
+    source_range = source_ws.range("C2:C368")
     letter_range = target_ws.range("P2:P3")
     target_range = target_ws.range("N2:N3")
 
@@ -18,7 +18,7 @@ def extract_and_move_values():
     for cell in source_range:
         source_value = cell.value
         row = cell.row
-        distance_value = target_ws.range(f"C{row}").value
+        distance_value = target_ws.range(f"D{row}").value
 
         if source_value:
             parts = source_value.split(",")  # Split the cell value by comma
