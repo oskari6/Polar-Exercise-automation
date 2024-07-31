@@ -73,6 +73,8 @@ def process_exercise(exercise, training_data, access_token):
         weather_time = dt.strftime("%Y-%m-%dT%H")
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
+        if duration_seconds < 300:
+            return
         lat, lon = fetch_location_samples(exercise_id, access_token)
         if sport == "TREADMILL RUNNING":
             distance_meters = 0
