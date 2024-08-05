@@ -19,6 +19,8 @@ import sqlite3
 CONFIG_FILENAME = "config.yml"
 TOKEN_FILENAME = "usertokens.yml"
 
+db_path = "C:\\Users\\Oskari\\OneDrive\\Excel_Script\\training_db.db"
+
 config = load_config(CONFIG_FILENAME)
 
 accesslink = AccessLink(client_id=config['client_id'],
@@ -64,8 +66,10 @@ def fetch_weather(lat, lon, start):
 
 def process_exercise(exercise, training_data, access_token):
     sport = exercise.get("sport", "unknown")
+    # only running exercises tracked 
     if "RUNNING" in sport:
         exercise_id = exercise.get("id")
+        # if already fetched, skip
         if is_exercise_in_db(exercise_id):
             return
         start_time = exercise.get('start_time')
@@ -73,12 +77,16 @@ def process_exercise(exercise, training_data, access_token):
         weather_time = dt.strftime("%Y-%m-%dT%H")
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
+        # not shorter than 5min exercises
         if duration_seconds < 300:
             return
+        # latitude and longitude for weather fetch
         lat, lon = fetch_location_samples(exercise_id, access_token)
+        # treadmill exercise format
         if sport == "TREADMILL RUNNING":
             distance_meters = 0
             temperature = None
+        # outside exercises
         else:
             distance_meters = exercise.get('distance')
             temperature = fetch_weather(lat, lon, weather_time) if lat and lon else None
@@ -98,7 +106,7 @@ def process_exercise(exercise, training_data, access_token):
             "timestamp": start_time,
             "exercise_id": exercise_id
         })
-
+# main fetch
 def fetch_data():
     tokens = token_db()
     training_data = []
@@ -115,7 +123,7 @@ def fetch_data():
     save_to_db(training_data)
 
 def is_exercise_in_db(exercise_id):
-    conn = sqlite3.connect("training_db.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     query = "SELECT 1 FROM exercise_data WHERE exercise_id = ?;"
@@ -133,8 +141,8 @@ def token_db():
         usertokens = {"tokens": []}
     return usertokens
 
+# get coordinates with gpx endpoint
 def fetch_location_samples(exercise_id, access_token):
-
     url = f"https://www.polaraccesslink.com/v3/exercises/{exercise_id}/gpx"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -165,7 +173,7 @@ def fetch_location_samples(exercise_id, access_token):
     return None, None
 
 def save_to_db(training_data):
-    conn = sqlite3.connect("training_db.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     insert_sql = """
