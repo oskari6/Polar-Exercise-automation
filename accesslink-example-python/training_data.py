@@ -42,6 +42,9 @@ def format_duration(seconds):
 def format_distance(meters):
     return f"{meters / 1000:.2f}" if meters is not None else "0.00"
 
+def custom_round(number):
+    return round(number + 0.5)
+
 def fetch_weather(lat, lon, start):
     try:
         lat = float(lat)
@@ -102,7 +105,7 @@ def process_exercise(exercise, training_data, access_token):
             "distance": format_distance(distance_meters),
             "hr_avg": avg_hr if avg_hr is not None else None,
             "hr_max": max_hr if max_hr is not None else None,
-            "temperature": temperature if temperature is not None else None,
+            "temperature": custom_round(temperature) if temperature is not None else None,
             "timestamp": start_time,
             "exercise_id": exercise_id
         })
