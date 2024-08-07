@@ -1,6 +1,6 @@
 # Application for reading exercise data (Windows)
-![image](https://github.com/user-attachments/assets/ef5809ad-8e7d-4993-ad6b-99b793263bde)
-![image](https://github.com/user-attachments/assets/0fdae245-c94c-4d54-b051-67eacf69247d)
+![image](https://github.com/user-attachments/assets/59abba26-17d0-4638-a0bb-55a4b4d4d5cc)
+![image](https://github.com/user-attachments/assets/eb75dae3-a8fe-4a14-8585-6b1a0bdaa387)
 - you will need the following:
 - polar account
 - accesslink user id, token, client id, client secret
@@ -25,5 +25,6 @@
 # Automation
 - The excel_shoes script gets executed with a .bat script
 - The data gets fetched with Windows Task scheduler, through an virtual environment with the help of .bat script
-![image](https://github.com/user-attachments/assets/00a75898-cf9e-493f-964b-4b34eb458a39)
-  ![image](https://github.com/user-attachments/assets/85c123ec-7204-4d78-9db7-effe0753a1cf)
+![image](https://github.com/user-attachments/assets/f53def2d-b4e4-41de-abec-cfb97c4f0be7)
+![image](https://github.com/user-attachments/assets/63769e23-9fd7-4bdf-a615-11c2cb69f0bb)
+
