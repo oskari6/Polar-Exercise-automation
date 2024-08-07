@@ -1,5 +1,6 @@
 # Application for reading exercise data (Windows)
-![image](https://github.com/user-attachments/assets/ef5809ad-8e7d-4993-ad6b-99b793263bde)
+![image](![image](https://github.com/user-attachments/assets/9c2ad6ee-f2f1-4b8c-97b3-01c3a6d72dae)
+)
 ![image](https://github.com/user-attachments/assets/0fdae245-c94c-4d54-b051-67eacf69247d)
 - you will need the following:
 - polar account
