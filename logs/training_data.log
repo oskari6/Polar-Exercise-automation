@@ -10,3 +10,9 @@ Fetching training data...
 Data saved to database
 Fri 08/02/2024 15:55:56.64 
  
+Traceback (most recent call last):
+  File "C:\Temp\Excel_script\polar api\training_data.py", line 14, in <module>
+    from weather_api import fetch_weather
+ModuleNotFoundError: No module named 'weather_api'
+Thu 08/15/2024 16:25:43.73 
+ 
