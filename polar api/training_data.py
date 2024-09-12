@@ -1,3 +1,8 @@
+import os
+
+# debugging purposes
+os.chdir("C:\\Temp\\Excel_script\\polar api")
+
 import platform
 import re
 if platform.system() == 'Windows':
@@ -26,7 +31,7 @@ accesslink = AccessLink(client_id=config['client_id'],
 
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
-    match = re.match(r'PT(\d+)S', duration)
+    match = re.match(r'PT(\d+)(?:\.\d+)?S', duration)
     return int(match.group(1)) if match else 0
 
 def format_duration(seconds):
@@ -95,7 +100,6 @@ def fetch_data():
         
         access_token = item["access_token"]
         exercises = accesslink.get_exercises(access_token=access_token)
-
         for exercise in exercises:
             process_exercise(exercise, training_data, access_token)
     save_to_db(training_data)
