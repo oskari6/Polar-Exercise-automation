@@ -1,7 +1,0 @@
-*.pyc
-env/
-.vs/
-usertokens.yml
-config.yml
-
-logs/training_data.log
