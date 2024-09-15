@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Temp\Excel\polar api\training_data.py", line 12, in <module>
-    from utils import load_config
-  File "C:\Temp\Excel\polar api\utils.py", line 4, in <module>
-    import yaml
-ModuleNotFoundError: No module named 'yaml'
-Sun 09/15/2024 18:10:06.62 
- 
