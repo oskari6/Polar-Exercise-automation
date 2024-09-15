@@ -3,4 +3,5 @@ env/
 .vs/
 usertokens.yml
 config.yml
-training_data.log
+
+logs/training_data.log

@@ -1,5 +1,6 @@
 @echo off
 set logFile=C:\Temp\Excel\logs\training_data.log
+set logFile=C:\Temp\Excel\logs\training_data.log
 
 cd /d C:\Temp\Excel\polar api
 "C:\Temp\Excel\.venv\Scripts\python.exe" training_data.py >> %logFile% 2>&1
