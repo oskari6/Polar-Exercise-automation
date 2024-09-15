@@ -1,7 +1,7 @@
 import os
 
 # debugging purposes
-os.chdir("C:\\Temp\\Excel_script\\polar api")
+os.chdir("C:\\Temp\\Excel\\polar api")
 
 import platform
 import re

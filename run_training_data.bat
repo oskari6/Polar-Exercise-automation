@@ -1,10 +1,10 @@
 @echo off
-set logFile=C:\Temp\Excel_script\logs\training_data.log
+set logFile=C:\Temp\Excel\logs\training_data.log
 
-cd /d C:\Temp\Excel_script\.venv\Scripts
+cd /d C:\Temp\Excel\.venv\Scripts
 call activate
 
-cd /d C:\Temp\Excel_script\polar api
+cd /d C:\Temp\Excel\polar api
 python training_data.py >> "%logFile%" 2>&1
 
 echo %date% %time% >> "%logFile%"

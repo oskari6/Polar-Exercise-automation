@@ -1,45 +1,8 @@
-Fetching training data...
-Data saved to database
-Wed 07/31/2024 18:15:31.52 
- 
-Fetching training data...
-Data saved to database
-Thu 08/01/2024 14:30:09.35 
- 
-Fetching training data...
-Data saved to database
-Fri 08/02/2024 15:55:56.64
- 
-FutureWarning: Support for nested sequences for 'parse_dates' in pd.read_csv is deprecated. Combine the desired columns with pd.to_datetime after parsing instead.
-Fetching training data...
-Data saved to database
-Mon 08/19/2024 18:02:16.60 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:27:28.59 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:28:27.14 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:29:42.93 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:30:10.94 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:31:16.73 
- 
-Fetching training data...
-Data saved to database
-Sat 08/24/2024 16:41:36.26 
- 
-Fetching training data...
-Data saved to database
-Sun 08/25/2024 16:23:07.91 
+Traceback (most recent call last):
+  File "C:\Temp\Excel\polar api\training_data.py", line 12, in <module>
+    from utils import load_config
+  File "C:\Temp\Excel\polar api\utils.py", line 4, in <module>
+    import yaml
+ModuleNotFoundError: No module named 'yaml'
+Sun 09/15/2024 18:10:06.62 
  
