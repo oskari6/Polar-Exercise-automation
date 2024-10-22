@@ -25,7 +25,7 @@ def extract_and_move_values():
                 part = part.strip()  # Remove any unexpected whitespace
                 if '-' in part:
                     letter, num = part.split("-")
-                    num = int(num)  # Convert to float to handle decimal distances if any
+                    num = float(num)  # Convert to float to handle decimal distances if any
                     for letter_cell in letter_range:
                         if letter_cell.value.strip() == letter.strip():
                             target_cell = letter_cell.offset(0, 1)
@@ -40,5 +40,5 @@ def extract_and_move_values():
                             break
 
 if __name__ == "__main__":
-    xw.Book("shoe_test.xlsm").set_mock_caller()
+    xw.Book("diary_2024.xlsm").set_mock_caller()
     extract_and_move_values()

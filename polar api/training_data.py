@@ -49,6 +49,7 @@ def custom_round(number):
 
 def process_exercise(exercise, training_data, access_token):
     sport = exercise.get("sport", "unknown")
+    detailed_sport = exercise.get("detailed_sport_info", "unknown")
     # only running exercises tracked 
     if "RUNNING" in sport:
         exercise_id = exercise.get("id")
@@ -57,21 +58,27 @@ def process_exercise(exercise, training_data, access_token):
             return
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-        weather_time = dt.strftime("%Y-%m-%dT%H")
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
         # not shorter than 5min exercises
         if duration_seconds < 300:
             return
-        # latitude and longitude for weather fetch
-        lat, lon = fetch_location_samples(exercise_id, access_token)
         # treadmill exercise format
-        if sport == "TREADMILL RUNNING":
-            distance_meters = 0
+        if detailed_sport == "TREADMILL_RUNNING":
+            while True:
+                try:
+                    distance = float(input(f"Enter distance for {dt.strftime("%m/%d")}: "))
+                    break  # Exit loop when valid input is entered
+                except ValueError:
+                    print("Invalid input. Please enter a valid number.")
             temperature = None
         # outside exercises
         else:
+            weather_time = dt.strftime("%Y-%m-%dT%H")
+            # latitude and longitude for weather fetch
+            lat, lon = fetch_location_samples(exercise_id, access_token)
             distance_meters = exercise.get('distance')
+            distance = format_distance(distance_meters)
             temperature = fetch_weather(lat, lon, weather_time) if lat and lon else None
 
         heart_rate = exercise.get('heart_rate', {})
@@ -82,7 +89,7 @@ def process_exercise(exercise, training_data, access_token):
         training_data.append({
             "start_time": dt.strftime("%Y-%m-%d"),
             "duration": format_duration(duration_seconds),
-            "distance": format_distance(distance_meters),
+            "distance": distance,
             "hr_avg": avg_hr if avg_hr is not None else None,
             "hr_max": max_hr if max_hr is not None else None,
             "temperature": custom_round(temperature) if temperature is not None else None,
