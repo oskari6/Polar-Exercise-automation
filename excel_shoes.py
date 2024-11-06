@@ -5,36 +5,31 @@ def extract_and_move_values():
     ws = wb.sheets.active
 
     source_range = ws.range("J2:J368")
-    letter_range = ws.range("Q2:Q6")
-    target_range = ws.range("R2:R6")
+    target_range = ws.range("S2:S6")
 
     for cell in target_range:
         cell.value = 0
 
+    letter_to_target = {letter.value.strip() : letter.offset(0,2) for letter in ws.range("Q2:Q6")}
+    
     for cell in source_range:
-        if cell.value is None:
+        cell_value = cell.value
+        if cell_value is None:
             break
-        letter_value = cell.value
-        row = cell.row
-
-        if "," in letter_value:
-            parts = letter_value.split(",")
-            for part in parts:
-                part = part.strip()
-                letter_part, num = part.split("-")
+        elif "-" not in cell_value:
+            continue
+        
+        parts = cell_value.split(",")
+        for part in parts:
+            try:
+                letter_part, num = part.strip().split("-")
                 num = float(num) 
-                for letter in letter_range:
-                    if letter.value.strip() == letter_part.strip():
-                        target_cell = letter.offset(0, 1)
-                        target_cell.value += num
-                        break
-        else:
-            distance_value = ws.range(f"D{row}").value
-            for letter in letter_range:
-                if letter.value.strip() == letter_value.strip():
-                    target_cell = letter.offset(0, 1)
-                    target_cell.value += distance_value
-                    break
+ 
+                target_cell = letter_to_target.get(letter_part.strip())
+                if target_cell:
+                    target_cell.value += num
+            except ValueError:
+                print(f"Skipping invalid format in cell {cell.address}:{cell.value}")
 
 if __name__ == "__main__":
     xw.Book("diary_2024.xlsm").set_mock_caller()
