@@ -5,7 +5,7 @@ def extract_and_move_values():
     ws = wb.sheets.active
 
     source_range = ws.range("J2:J368")
-    target_range = ws.range("S2:S6")
+    target_range = ws.range("S2:S7")
 
     for cell in target_range:
         cell.value = 0
