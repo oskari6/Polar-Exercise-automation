@@ -21,7 +21,7 @@ from weather_api import fetch_weather
 CONFIG_FILENAME = "config.yml"
 TOKEN_FILENAME = "usertokens.yml"
 
-db_path = "C:\\Users\\Oskari\\OneDrive - Kouvolan Ammattiopisto Oy, Eduko\\Excel_Script\\training_db.db"
+db_path = "C:\\Temp\\Data\\training-data-db\\training_db.db"
 
 config = load_config(CONFIG_FILENAME)
 
