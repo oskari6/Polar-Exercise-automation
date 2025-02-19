@@ -11,16 +11,16 @@ book = load_workbook(xlsm_file, keep_vba=True)
 workbook_session_ids = set()
 for sheet_name in book.sheetnames:
     sheet = book[sheet_name]
-    workbook_session_ids.update(row[0] for row in sheet.iter_rows(min_row=2, values_only=True) if row[0])
+    workbook_session_ids.update(row[7] for row in sheet.iter_rows(min_row=2, values_only=True) if row[7])
 
 #Fetch data from Redis, excluding existing session_ids
 data = []
 for year in [2023, 2024, 2025]:
-    session_ids = redis_client.lrange(f"exercise:{year}", 0, -1)
-    for session_id in session_ids:
-        if session_id not in workbook_session_ids:
-            row = redis_client.hgetall(f"exercise:session:{session_id}")
-            row["session_id"] = session_id
+    exercise_ids = redis_client.lrange(f"exercise:{year}", 0, -1)
+    for exercise_id in exercise_ids:
+        if exercise_id not in workbook_session_ids:
+            row = redis_client.hgetall(f"exercise:session:{exercise_id}")
+            row["exercise_id"] = exercise_id
             data.append(row)
 
 #Convert the filtered data to a DataFrame

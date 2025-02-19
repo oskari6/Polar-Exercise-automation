@@ -51,6 +51,7 @@ def process_exercise(exercise, training_data, access_token):
     sport = exercise.get("sport", "unknown")
     detailed_sport = exercise.get("detailed_sport_info", "unknown")
     # only running exercises tracked 
+    print(exercise)
     if "RUNNING" in sport:
         exercise_id = exercise.get("id")
         # if already fetched, skip

@@ -3,9 +3,6 @@ set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 set backupDir=C:\Temp\Python\training-diary\redis\backups
 set containerName=redis-server
 
-echo Starting Python redis virtual environment
-activate_env Redis
-
 echo Starting Docker
 net start com.docker.service
 
@@ -34,6 +31,13 @@ if %errorlevel% neq 0 (
     pause
     exit /b
 )
+
+echo Starting redi environment...
+cd /d C:\Temp\Python\training-diary\redis
+activate_env redis
+
+echo running excel data insert script...
+python store_exercise_data.py
 
 echo Creating Redis backup...
 docker exec -it redis-server redis-cli BGSAVE

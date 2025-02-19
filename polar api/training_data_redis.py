@@ -31,9 +31,6 @@ accesslink = AccessLink(client_id=config['client_id'],
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-def is_exercise_in_redis(exercise_id):
-    return redis_client.exists(f"exercise:session:{exercise_id}") == 1
-
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
     match = re.match(r'PT(\d+)(?:\.\d+)?S', duration)
@@ -52,17 +49,20 @@ def format_distance(meters):
 def custom_round(number):
     return round(number + 0.5)
 
+def is_exercise_in_redis(exercise_id, year):
+    return redis_client.lpos(f"exercise:{year}",exercise_id) is not None
+
 def process_exercise(exercise, training_data, access_token):
     sport = exercise.get("sport", "unknown")
     detailed_sport = exercise.get("detailed_sport_info", "unknown")
     # only running exercises tracked 
     if "RUNNING" in sport:
-        exercise_id = exercise.get("id")
+        exercise_id = exercise.get("id") 
         # if already fetched, skip
-        if is_exercise_in_redis(exercise_id):
-            return
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+        if is_exercise_in_redis(exercise_id,dt.year):
+            return
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
         # not shorter than 5min exercises
@@ -101,6 +101,33 @@ def process_exercise(exercise, training_data, access_token):
             "timestamp": start_time,
             "exercise_id": exercise_id
         })
+
+def save_to_redis(training_data):
+    last_key = redis_client.scan_iter(match="exercise:session:*", count=1)
+    last_key = sorted(last_key, key=lambda k: int(k.split(":")[-1]))[-1]
+    session_id = int(last_key.split(":")[-1]) + 1
+
+    pipeline = redis_client.pipeline()
+
+    for data in training_data:
+        year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
+        redis_data = {
+            "session_id": session_id,
+            "timestamp": data.get("timestamp"),
+            "date": data.get("start_time"),
+            "duration": data.get("duration"),
+            "distance": data.get("distance"),
+            "hr_avg": data["hr_avg"] if data["hr_avg"] is not None else "",
+            "hr_max": data["hr_max"] if data["hr_max"] is not None else "",
+            "temperature": data["temperature"] if data["temperature"] is not None else "",
+            "exercise_id": data.get("exercise_id"),
+            "year": year
+        }
+        pipeline.hset(f"exercise:session:{session_id}", mapping=redis_data)
+        pipeline.rpush(f"exercise:{year}", data['exercise_id'])
+        session_id += 1
+    pipeline.execute()
+
 # main fetch
 def fetch_data():
     tokens = token_db()
@@ -115,15 +142,6 @@ def fetch_data():
         for exercise in exercises:
             process_exercise(exercise, training_data, access_token)
     save_to_redis(training_data)
-
-def save_to_redis(training_data):
-    pipeline = redis_client.pipeline()
-    for data in training_data:
-        session_key = f"exercise:session{data['exercise_id']}"
-        pipeline.hset(session_key,mapping=data)
-        year = datetime.strptime(data['start_time'],"%Y-%m-%d").year
-        pipeline.rpush(f"exercise:{year}", data['exercise_id'])
-    pipeline.execute()
 
 def token_db():
     usertokens = None
