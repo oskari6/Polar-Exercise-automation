@@ -15,8 +15,8 @@ from datetime import datetime
 import requests
 import xml.etree.ElementTree as ET
 
-import sqlite3
 from weather_api import fetch_weather
+import redis
 
 CONFIG_FILENAME = "config.yml"
 TOKEN_FILENAME = "usertokens.yml"
@@ -28,6 +28,11 @@ config = load_config(CONFIG_FILENAME)
 accesslink = AccessLink(client_id=config['client_id'],
                         client_secret=config['client_secret'],
                         redirect_url="http://localhost")
+
+redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+def is_exercise_in_redis(exercise_id):
+    return redis_client.exists(f"exercise:session:{exercise_id}") == 1
 
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
@@ -54,7 +59,7 @@ def process_exercise(exercise, training_data, access_token):
     if "RUNNING" in sport:
         exercise_id = exercise.get("id")
         # if already fetched, skip
-        if is_exercise_in_db(exercise_id):
+        if is_exercise_in_redis(exercise_id):
             return
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
@@ -109,18 +114,16 @@ def fetch_data():
         exercises = accesslink.get_exercises(access_token=access_token)
         for exercise in exercises:
             process_exercise(exercise, training_data, access_token)
-    save_to_db(training_data)
+    save_to_redis(training_data)
 
-def is_exercise_in_db(exercise_id):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    query = "SELECT 1 FROM exercise_data WHERE exercise_id = ?;"
-    cursor.execute(query, (exercise_id,))
-    exists = cursor.fetchone() is not None
-
-    conn.close()
-    return exists
+def save_to_redis(training_data):
+    pipeline = redis_client.pipeline()
+    for data in training_data:
+        session_key = f"exercise:session{data['exercise_id']}"
+        pipeline.hset(session_key,mapping=data)
+        year = datetime.strptime(data['start_time'],"%Y-%m-%d").year
+        pipeline.rpush(f"exercise:{year}", data['exercise_id'])
+    pipeline.execute()
 
 def token_db():
     usertokens = None
@@ -160,28 +163,6 @@ def fetch_location_samples(exercise_id, access_token):
         print(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
 
     return None, None
-
-def save_to_db(training_data):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    insert_sql = """
-    INSERT INTO exercise_data (date, duration, distance, hr_avg, hr_max, temperature, timestamp, exercise_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """
-    for data in training_data:
-        cursor.execute(insert_sql, (
-            data["start_time"],
-            data["duration"],
-            data["distance"],
-            data["hr_avg"],
-            data["hr_max"],
-            data["temperature"],
-            data["timestamp"],
-            data["exercise_id"]))
-        
-    conn.commit()
-    conn.close()
 
 def main():
     print("Fetching training data...")

@@ -5,3 +5,7 @@ usertokens.yml
 config.yml
 
 /logs/
+.venv
+backup_data.csv
+dump.rdb
+exercise_data*

@@ -1,8 +1,8 @@
 @echo off
-set logFile=C:\Temp\Excel\logs\training_data.log
+set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 
-cd /d C:\Temp\Excel\polar api
-"C:\Temp\Excel\.venv\Scripts\python.exe" training_data.py
+cd /d C:\Temp\Python\training-diary\polar api
+"C:\Temp\Python\training-diary\.venv\Scripts\python.exe" training_data.py
 
 if %errorlevel% neq 0 (
     echo Python script execution failed. >> %logFile%
