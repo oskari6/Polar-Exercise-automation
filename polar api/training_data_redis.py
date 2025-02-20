@@ -113,6 +113,7 @@ def save_to_redis(training_data):
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         redis_data = {
             "session_id": session_id,
+            "exercise_id": data.get("exercise_id"),
             "timestamp": data.get("timestamp"),
             "date": data.get("start_time"),
             "duration": data.get("duration"),
@@ -120,8 +121,6 @@ def save_to_redis(training_data):
             "hr_avg": data["hr_avg"] if data["hr_avg"] is not None else "",
             "hr_max": data["hr_max"] if data["hr_max"] is not None else "",
             "temperature": data["temperature"] if data["temperature"] is not None else "",
-            "exercise_id": data.get("exercise_id"),
-            "year": year
         }
         pipeline.hset(f"exercise:session:{session_id}", mapping=redis_data)
         pipeline.rpush(f"exercise:{year}", data['exercise_id'])

@@ -3,8 +3,15 @@ set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 set backupDir=C:\Temp\Python\training-diary\redis\backups
 set containerName=redis-server
 
-echo Starting Docker
-net start com.docker.service
+echo Checking if Docker is running...
+tasklist | findstr /I "com.docker.service" >nul
+if %errorlevel% neq 0 (
+    echo Starting Docker Desktop...
+    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    timeout /t 10 >nul
+)
+
+echo Docker is running.
 
 echo Starting Docker Container...
 docker start %containerName%
@@ -32,34 +39,15 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-echo Starting redi environment...
+echo Starting redis environment...
 cd /d C:\Temp\Python\training-diary\redis
-activate_env redis
+call activate_env redis
 
 echo running excel data insert script...
-python store_exercise_data.py
+python load_to_excel.py
 
 echo Creating Redis backup...
 docker exec -it redis-server redis-cli BGSAVE
-
-timeout /t 5 >nul
-if not exist "%backupDir%\dump.rdb" (
-    echo Backup failed: dump.rdb not found. >> %logFile%
-    echo Backup failed: dump.rdb not found.
-    pause
-    exit /b
-)
-
-for %%F in ("%backupDir%\dump.rdb") do set "lastModified=%%~tF"
-for /f "tokens=2 delims=:" %%T in ('docker exec -it redis-server redis-cli INFO persistence ^| find "rdb_last_save_time"') do set "redisSaveTime=%%T"
-set "redisSaveTime=%redisSaveTime:~0,10%"
-
-if "%lastModified%" LSS "%redisSaveTime%" (
-    echo Backup failed: dump.rdb was not updated. >> %logFile%
-    echo Backup failed: dump.rdb was not updated.
-    pause
-    exit /b
-)
 
 echo Stopping Docker container...
 docker stop %containerName%
@@ -73,6 +61,9 @@ if %errorlevel% neq 0 (
     pause
     exit /b
 )
+
+echo Stopping Docker desktop...
+taskkill /IM "Docker Desktop.exe" /F
 
 echo %date% %time% OK >> %logFile%
 echo. >> %logFile%
