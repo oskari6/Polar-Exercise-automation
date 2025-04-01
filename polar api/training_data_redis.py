@@ -1,4 +1,5 @@
 import os
+import sys
 
 # debugging purposes
 os.chdir("C:\\Temp\\Python\\training-diary\\polar api")
@@ -31,6 +32,14 @@ accesslink = AccessLink(client_id=config['client_id'],
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
+def token_db():
+    usertokens = None
+    if exists(TOKEN_FILENAME):
+        usertokens = load_config(TOKEN_FILENAME)
+    if usertokens is None:
+        usertokens = {"tokens": []}
+    return usertokens
+
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
     match = re.match(r'PT(\d+)(?:\.\d+)?S', duration)
@@ -48,6 +57,37 @@ def format_distance(meters):
 
 def custom_round(number):
     return round(number + 0.5)
+
+# get coordinates with gpx endpoint
+def fetch_location_samples(exercise_id, access_token):
+    url = f"https://www.polaraccesslink.com/v3/exercises/{exercise_id}/gpx"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/gpx+xml"
+    }
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        try:
+            root = ET.fromstring(response.text)
+            namespace = {'gpx': 'http://www.topografix.com/GPX/1/1'}
+            
+            trkseg = root.find('.//gpx:trkseg', namespace)
+            if trkseg is not None:
+                trkpt = trkseg.find('gpx:trkpt', namespace)
+                if trkpt is not None:
+                    lat = trkpt.attrib.get('lat')
+                    lon = trkpt.attrib.get('lon')
+                    if lat and lon:
+                        lat = format(float(lat), ".4f")
+                        lon = format(float(lon), ".4f")
+                        return lat, lon
+        except ET.ParseError as e:
+            print(f"ET Parse Error: {e}")
+    else:
+        print(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
+
+    return None, None
 
 def is_exercise_in_redis(exercise_id, year):
     return redis_client.lpos(f"exercise:{year}",exercise_id) is not None
@@ -108,8 +148,9 @@ def save_to_redis(training_data):
     session_id = int(last_key.split(":")[-1]) + 1
 
     pipeline = redis_client.pipeline()
-
+    rows = 0
     for data in training_data:
+        rows += 1
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         redis_data = {
             "session_id": session_id,
@@ -126,6 +167,7 @@ def save_to_redis(training_data):
         pipeline.rpush(f"exercise:{year}", data['exercise_id'])
         session_id += 1
     pipeline.execute()
+    print(f"{rows} row(s) inserted to redis.")
 
 # main fetch
 def fetch_data():
@@ -140,51 +182,17 @@ def fetch_data():
         exercises = accesslink.get_exercises(access_token=access_token)
         for exercise in exercises:
             process_exercise(exercise, training_data, access_token)
-    save_to_redis(training_data)
-
-def token_db():
-    usertokens = None
-    if exists(TOKEN_FILENAME):
-        usertokens = load_config(TOKEN_FILENAME)
-    if usertokens is None:
-        usertokens = {"tokens": []}
-    return usertokens
-
-# get coordinates with gpx endpoint
-def fetch_location_samples(exercise_id, access_token):
-    url = f"https://www.polaraccesslink.com/v3/exercises/{exercise_id}/gpx"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Accept": "application/gpx+xml"
-    }
-    
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        try:
-            root = ET.fromstring(response.text)
-            namespace = {'gpx': 'http://www.topografix.com/GPX/1/1'}
-            
-            trkseg = root.find('.//gpx:trkseg', namespace)
-            if trkseg is not None:
-                trkpt = trkseg.find('gpx:trkpt', namespace)
-                if trkpt is not None:
-                    lat = trkpt.attrib.get('lat')
-                    lon = trkpt.attrib.get('lon')
-                    if lat and lon:
-                        lat = format(float(lat), ".4f")
-                        lon = format(float(lon), ".4f")
-                        return lat, lon
-        except ET.ParseError as e:
-            print(f"ET Parse Error: {e}")
-    else:
-        print(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
-
-    return None, None
+    if training_data:
+        save_to_redis(training_data)
+        return False
+    else: return True
 
 def main():
     print("Fetching training data...")
-    fetch_data()
-    print("Data saved to database")
+    no_rows = fetch_data()
+    return no_rows
 
 if __name__ == "__main__":
-    main()
+    no_rows = main()
+    if no_rows: sys.exit(1)
+    else: sys.exit(0)

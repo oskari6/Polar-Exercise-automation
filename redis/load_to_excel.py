@@ -33,8 +33,10 @@ if df.empty:
     print("No new data to append.")
     exit()
 
-df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "temperature", "hr_avg", "hr_max"]]
+df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
 df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
+df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
+df["date"] = pd.to_datetime(df["date"]).dt.strftime('%m/%d/%Y')
 
 last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) if any(row[:3])), default=1)
 
