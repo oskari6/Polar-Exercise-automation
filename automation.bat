@@ -14,9 +14,11 @@ if errorlevel 1 (
     )
 )
 
+set workDir=C:\Temp\Python\training-diary\polar api
 set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 set backupDir=C:\Temp\Python\training-diary\backups
 set containerName=redis-server
+set excelDir=C:\Users\Oskari\OneDrive - Intragen\excel\exercise_data.xlsm
 
 echo Starting Redis...
 docker-compose up -d >nul 2>&1
@@ -30,8 +32,8 @@ if %errorlevel% neq 0 (
 )
 
 echo Fetching data...
-cd /d C:\Temp\Python\training-diary\polar api
-call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" training_data_redis.py >nul 2>&1
+cd /d %workDir%
+call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" fetch_data.py >nul 2>&1
 
 if %errorlevel% neq 0 (
     echo Fetching failed. >> %logFile%
@@ -54,7 +56,7 @@ taskkill /IM "Docker Desktop.exe" /F >nul 2>&1
 taskkill /IM "com.docker.backend.exe" /F >nul 2>&1
 
 echo Copying to OneDrive...
-copy /Y "C:\Temp\Python\training-diary\exercise_data.xlsm" "C:\Users\Oskari\OneDrive - Intragen\backups\exercise_data.xlsm" >nul 2>&1
+copy /Y %excelDir% "C:\Temp\Python\training-diary\backups" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Failed to copy to OneDrive. >> %logFile%
     echo Failed to copy to OneDrive.
@@ -65,5 +67,5 @@ if %errorlevel% neq 0 (
 echo %date% %time% OK >> %logFile%
 echo. >> %logFile%
 
-echo Open Excel
-start "" "C:\Users\Oskari\OneDrive - Intragen\backups\exercise_data.xlsm"
+echo Opening Excel...
+start "" %excelDir%

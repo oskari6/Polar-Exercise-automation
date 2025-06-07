@@ -6,7 +6,7 @@ from datetime import datetime
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 year = datetime.now().year
-xlsm_file = "exercise_data.xlsm"
+xlsm_file = "C:\Users\Oskari\OneDrive - Intragen\excel\exercise_data.xlsm"
 book = load_workbook(xlsm_file, keep_vba=True)
 sheet = book[str(year)]
 

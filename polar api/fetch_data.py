@@ -1,13 +1,10 @@
 import os
 import sys
 
-# debugging purposes
+# debug
 os.chdir("C:\\Temp\\Python\\training-diary\\polar api")
 
-import platform
 import re
-if platform.system() == 'Windows':
-    from asyncio.windows_events import NULL
 from genericpath import exists
 
 from utils import load_config
@@ -19,10 +16,11 @@ import xml.etree.ElementTree as ET
 from weather_api import fetch_weather
 import redis
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+
 CONFIG_FILENAME = "config.yml"
 TOKEN_FILENAME = "usertokens.yml"
-
-db_path = "C:\\Temp\\Data\\training-data-db\\training_db.db"
 
 config = load_config(CONFIG_FILENAME)
 
@@ -32,13 +30,13 @@ accesslink = AccessLink(client_id=config['client_id'],
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-def token_db():
+def get_access_token():
     usertokens = None
     if exists(TOKEN_FILENAME):
         usertokens = load_config(TOKEN_FILENAME)
     if usertokens is None:
         usertokens = {"tokens": []}
-    return usertokens
+    return usertokens["tokens"][0]['access_token']
 
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
@@ -51,12 +49,6 @@ def format_duration(seconds):
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
     return f"{hours}:{minutes:02}:{seconds:02}"
-
-def format_distance(meters):
-    return f"{meters / 1000:.2f}" if meters is not None else "0.00"
-
-def custom_round(number):
-    return round(number + 0.5)
 
 # get coordinates with gpx endpoint
 def fetch_location_samples(exercise_id, access_token):
@@ -86,23 +78,20 @@ def fetch_location_samples(exercise_id, access_token):
             print(f"ET Parse Error: {e}")
     else:
         print(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
-
     return None, None
-
-def is_exercise_in_redis(exercise_id, year):
-    return redis_client.lpos(f"exercise:{year}",exercise_id) is not None
 
 def process_exercise(exercise, training_data, access_token):
     sport = exercise.get("sport", "unknown")
     detailed_sport = exercise.get("detailed_sport_info", "unknown")
+    is_treadmill = False
     # only running exercises tracked 
     if "RUNNING" in sport:
         exercise_id = exercise.get("id") 
         # if already fetched, skip
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-        if is_exercise_in_redis(exercise_id,dt.year):
-            return
+        # if redis_client.lpos(f"exercise:{dt.year}",exercise_id) is not None:
+        #     return
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
         # not shorter than 5min exercises
@@ -110,12 +99,7 @@ def process_exercise(exercise, training_data, access_token):
             return
         # treadmill exercise format
         if detailed_sport == "TREADMILL_RUNNING":
-            while True:
-                try:
-                    distance = float(input(f"Enter distance for {dt.strftime("%m/%d")}: "))
-                    break  # Exit loop when valid input is entered
-                except ValueError:
-                    print("Invalid input. Please enter a valid number.")
+            is_treadmill = True
             temperature = None
         # outside exercises
         else:
@@ -123,13 +107,12 @@ def process_exercise(exercise, training_data, access_token):
             # latitude and longitude for weather fetch
             lat, lon = fetch_location_samples(exercise_id, access_token)
             distance_meters = exercise.get('distance')
-            distance = format_distance(distance_meters)
+            distance = f"{distance_meters / 1000:.2f}" if distance_meters is not None else "0.00"
             temperature = fetch_weather(lat, lon, weather_time) if lat and lon else None
 
         heart_rate = exercise.get('heart_rate', {})
         avg_hr = heart_rate.get('average', None)
         max_hr = heart_rate.get('maximum', None)
-        
         
         training_data.append({
             "start_time": dt.strftime("%Y-%m-%d"),
@@ -137,9 +120,10 @@ def process_exercise(exercise, training_data, access_token):
             "distance": distance,
             "hr_avg": avg_hr if avg_hr is not None else None,
             "hr_max": max_hr if max_hr is not None else None,
-            "temperature": custom_round(temperature) if temperature is not None else None,
+            "temperature": round(temperature + 0.5) if temperature is not None else None,
             "timestamp": start_time,
-            "exercise_id": exercise_id
+            "exercise_id": exercise_id,
+            "treadmill": is_treadmill
         })
 
 def save_to_redis(training_data):
@@ -152,13 +136,22 @@ def save_to_redis(training_data):
     for data in training_data:
         rows += 1
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
+        distance = data.get("distance")
+        start_time = data.get("start_time")
+        if data.get("treadmill"):
+            while True:
+                try:
+                    distance = float(input(f"Enter distance for {start_time}: "))
+                    break  # Exit loop when valid input is entered
+                except ValueError:
+                    print("Invalid input. Please enter a valid number.")
         redis_data = {
             "session_id": session_id,
             "exercise_id": data.get("exercise_id"),
             "timestamp": data.get("timestamp"),
-            "date": data.get("start_time"),
+            "date": start_time,
             "duration": data.get("duration"),
-            "distance": data.get("distance"),
+            "distance": distance,
             "hr_avg": data["hr_avg"] if data["hr_avg"] is not None else "",
             "hr_max": data["hr_max"] if data["hr_max"] is not None else "",
             "temperature": data["temperature"] if data["temperature"] is not None else "",
@@ -169,30 +162,33 @@ def save_to_redis(training_data):
     pipeline.execute()
     print(f"{rows} row(s) inserted to redis.")
 
+def parallel_process(exercises, access_token):
+    training_data = []
+    lock = Lock()
+
+    def wrapped_process(exercise):
+        local_data = []
+        process_exercise(exercise, local_data, access_token)
+        if local_data:
+            with lock:
+                training_data.extend(local_data)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        executor.map(wrapped_process, exercises)
+
+    return training_data
+
 # main fetch
 def fetch_data():
-    tokens = token_db()
     training_data = []
-
-    for item in tokens["tokens"]:
-        if item is None:
-            continue
-        
-        access_token = item["access_token"]
-        exercises = accesslink.get_exercises(access_token=access_token)
-        for exercise in exercises:
-            process_exercise(exercise, training_data, access_token)
+    access_token = get_access_token()
+    exercises = accesslink.get_exercises(access_token=access_token)
+    training_data = parallel_process(exercises, access_token)
     if training_data:
         save_to_redis(training_data)
-        return False
-    else: return True
-
-def main():
-    print("Fetching training data...")
-    no_rows = fetch_data()
-    return no_rows
+        return sys.exit(0)
+    return sys.exit(1)
 
 if __name__ == "__main__":
-    no_rows = main()
-    if no_rows: sys.exit(1)
-    else: sys.exit(0)
+    print("Fetching training data...")
+    fetch_data()

@@ -4,13 +4,13 @@ def extract_and_move_values():
     wb = xw.Book.caller() 
     ws = wb.sheets.active
 
-    source_range = ws.range("J2:J368")
-    target_range = ws.range("S2:S7")
+    source_range = ws.range("L2:L368")
+    target_range = ws.range("AA2:AA7") # shoe format result column
 
     for cell in target_range:
         cell.value = 0
 
-    letter_to_target = {letter.value.strip() : letter.offset(0,2) for letter in ws.range("Q2:Q6")}
+    letter_to_target = {letter.value.strip() : letter.offset(0,2) for letter in ws.range("Y2:Y7")}
     
     for cell in source_range:
         cell_value = cell.value
@@ -32,5 +32,5 @@ def extract_and_move_values():
                 print(f"Skipping invalid format in cell {cell.address}:{cell.value}")
 
 if __name__ == "__main__":
-    xw.Book("diary_2024.xlsm").set_mock_caller()
+    xw.Book("C:\Users\Oskari\OneDrive - Intragen\excel\exercise_data.xlsm").set_mock_caller()
     extract_and_move_values()
