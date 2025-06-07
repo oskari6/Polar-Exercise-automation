@@ -8,7 +8,7 @@
 ![image](https://github.com/user-attachments/assets/418a2d5d-e5d2-4dff-83be-60a1f8cee42f)
 ## What you need:
 - Polar account
-- ![Polar API setup with accesslink](https://github.com/polarofficial/accesslink-example-python)
+- [Polar API setup with accesslink](https://github.com/polarofficial/accesslink-example-python)
 - Docker desktop
 ## What you get
 - Training data from your Polar watch / Polar flow fetched, formatted, inserted and backedup automatically.
