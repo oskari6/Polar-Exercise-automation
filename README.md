@@ -4,6 +4,7 @@
 - Data inserting to Excel .xlsm file with formatting.
 - Script for handling distances with different shoes during the same exercise.
 - Potential automation with Windows Task Scheduler
+
 ![image](https://github.com/user-attachments/assets/418a2d5d-e5d2-4dff-83be-60a1f8cee42f)
 ## What you need:
 - Polar account
