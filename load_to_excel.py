@@ -6,7 +6,7 @@ from datetime import datetime
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 year = datetime.now().year
-xlsm_file = "C:\Users\Oskari\OneDrive - Intragen\excel\exercise_data.xlsm"
+xlsm_file = "C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm"
 book = load_workbook(xlsm_file, keep_vba=True)
 sheet = book[str(year)]
 
@@ -44,6 +44,5 @@ last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) 
 for i, row in enumerate(df.itertuples(index=False), start=last_row+1):
     for col, value in enumerate(row, start=1):  # Start from column 1 (A)
         sheet.cell(row=i, column=col, value=value)
-
 book.save(xlsm_file)
 print("Data successfully written to the workbook!")

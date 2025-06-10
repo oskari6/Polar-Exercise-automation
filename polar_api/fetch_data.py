@@ -190,5 +190,5 @@ def fetch_data():
     return sys.exit(1)
 
 if __name__ == "__main__":
-    print("Fetching training data...")
     fetch_data()
+    print("Data fetching finished.")
