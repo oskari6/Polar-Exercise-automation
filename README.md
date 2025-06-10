@@ -20,7 +20,7 @@
 - run `automation.bat`. Note that polar api starts tracking exercices from the moment you register the API client.
 # Functionalities
 - automation.bat the main script
-- fetch_automation.bat potential task scheduler automation for daily fetches. Schedule this script to run daily.
+- axecute_automation.vbs potential task scheduler automation for daily fetches. Schedule this script to run daily. Runs silently
 - excel_shoes.py formatting for multiple shoes used in same exercise. n-1,a-2 into excel cell.
 - fetch_data.py gets exercise data and appends to redis hashtable if any new exercises are detected.
 - load_to_excel.py insert to excel
