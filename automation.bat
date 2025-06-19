@@ -13,6 +13,22 @@ wsl -d %distro% -- bash -c "sudo /usr/sbin/service docker start" >> %logFile% 2>
 echo %date% %time% Starting Redis... >> %logFile%
 wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
+echo %date% %time% Waiting for Redis to be ready... >> %logFile%
+set attempts=0
+:waitForRedis
+wsl -d %distro% -- bash -c "docker exec redis-server redis-cli ping" | find "PONG" >nul
+if %errorlevel% neq 0 (
+    set /a attempts+=1
+    if %attempts% GEQ 10 (
+        echo %date% %time% Redis failed to respond after 10 attempts. >> %logFile%
+        echo Redis failed to start.
+        exit /b
+    )
+    timeout /t 2 >nul
+    goto waitForRedis
+)
+echo %date% %time% Redis is ready! >> %logFile%
+
 echo %date% %time% Fetching data... >> %logFile%
 cd /d %workDir%\polar_api
 call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" fetch_data.py >> %logFile% 2>&1

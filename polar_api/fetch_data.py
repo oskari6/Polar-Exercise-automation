@@ -86,12 +86,12 @@ def process_exercise(exercise, training_data, access_token):
     is_treadmill = False
     # only running exercises tracked 
     if "RUNNING" in sport:
-        exercise_id = exercise.get("id") 
+        exercise_id = exercise.get("id")
         # if already fetched, skip
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-        # if redis_client.lpos(f"exercise:{dt.year}",exercise_id) is not None:
-        #     return
+        if redis_client.lpos(f"exercise:{dt.year}",exercise_id) is not None:
+            return
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
         # not shorter than 5min exercises
