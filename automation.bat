@@ -31,7 +31,7 @@ echo %date% %time% Redis is ready! >> %logFile%
 
 echo %date% %time% Fetching data... >> %logFile%
 cd /d %workDir%\polar_api
-call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" fetch_data.py >> %logFile% 2>&1
+call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" fetch_data.py >> %logFile%
 
 if %errorlevel% neq 0 (
     echo %date% %time% Fetching failed. >> %logFile%

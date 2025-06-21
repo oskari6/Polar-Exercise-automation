@@ -186,9 +186,10 @@ def fetch_data():
     training_data = parallel_process(exercises, access_token)
     if training_data:
         save_to_redis(training_data)
+        print("Data fetching finished.")
         return sys.exit(0)
+    print("No training data to append")
     return sys.exit(1)
 
 if __name__ == "__main__":
     fetch_data()
-    print("Data fetching finished.")
