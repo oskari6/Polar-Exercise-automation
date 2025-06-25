@@ -9,4 +9,3 @@ config.yml
 backup_data.csv
 dump.rdb
 exercise_data*
-.redis-env

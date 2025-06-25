@@ -5,6 +5,7 @@ set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 set excelDir=C:\Users\OskariSulkakoski\OneDrive - Intragen\excel\exercise_data.xlsm
 set containerName=redis-server
 set distro=Ubuntu
+set python=C:\Temp\Python\training-diary\.venv\Scripts\python.exe
 
 echo ============================== >> %logFile%
 echo %date% %time% Starting Docker... >> %logFile%
@@ -31,7 +32,7 @@ echo %date% %time% Redis is ready! >> %logFile%
 
 echo %date% %time% Fetching data... >> %logFile%
 cd /d %workDir%\polar_api
-call "C:\Temp\Python\training-diary\.venv\Scripts\python.exe" fetch_data.py >> %logFile%
+call %python% fetch_data.py >> %logFile% 2>&1
 
 if %errorlevel% neq 0 (
     echo %date% %time% Fetching failed. >> %logFile%
@@ -42,7 +43,7 @@ if %errorlevel% neq 0 (
 
 echo %date% %time% Inserting data... >> %logFile%
 cd /d %workDir%
-call "C:\Temp\Python\training-diary\.redis-env\Scripts\python.exe" load_to_excel.py >> %logFile% 2>&1
+call %python% insert_data.py >> %logFile% 2>&1
 
 echo %date% %time% Creating backup... >> %logFile%
 wsl -d %distro% -- bash -c "docker exec -it redis-server redis-cli BGSAVE" >> %logFile% 2>&1

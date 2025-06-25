@@ -28,8 +28,8 @@
 
 ## Setup
 
-- Set up two virtual environments in the root of the project: `.redis-env`and `.venv`
-- Install requirements.txt into .venv and redis_requirements.txt into .redis-env
+- Set virtual environment in the root of the project: `.venv`
+- Install requirements.txt into .venv
 - Adjust the paths to match the ones you havein `automation.bat` and possibly elsewhere
 - run `automation.bat`. Note that polar api starts tracking exercices from the moment you register the API client.
 
@@ -39,7 +39,7 @@
 - axecute_automation.vbs potential task scheduler automation for daily fetches. Schedule this script to run daily. Runs silently
 - excel_shoes.py formatting for multiple shoes used in same exercise. n-1,a-2 into excel cell.
 - fetch_data.py gets exercise data and appends to redis hashtable if any new exercises are detected.
-- load_to_excel.py insert to excel
+- insert_data.py insert to excel
 - /pandas/ formatting scripts
 - /deprecated/ old implementation using sqlite database and odbc connection instead for inserting data (slower)
 - /backups/ excel spreadsheet backup on every run and redis backup file.
