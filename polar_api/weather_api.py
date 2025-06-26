@@ -1,6 +1,10 @@
 from meteostat import Hourly, Stations
 import pytz
 import pandas as pd
+from datetime import datetime
+
+def log(msg):
+    print(f"{datetime.now():%a %d-%m-%Y %H:%M:%S} {msg}")
 
 def fetch_weather(lat, lon, start):
     try:
@@ -21,5 +25,5 @@ def fetch_weather(lat, lon, start):
             celsius = data["temp"].iloc[0]
             return celsius
     except Exception as e:
-        print(f"Error fetching weather data: {e}")
+        log(f"Error fetching weather data: {e}")
     return None

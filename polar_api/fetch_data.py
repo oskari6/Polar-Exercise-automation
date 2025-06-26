@@ -1,6 +1,8 @@
 import os
 import sys
-
+from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, message=".*parse_dates.*")
 # debug
 os.chdir("C:\\Temp\\Python\\training-diary\\polar_api")
 
@@ -9,7 +11,6 @@ from genericpath import exists
 
 from utils import load_config
 from accesslink import AccessLink
-from datetime import datetime
 import requests
 import xml.etree.ElementTree as ET
 
@@ -29,6 +30,9 @@ accesslink = AccessLink(client_id=config['client_id'],
                         redirect_url="http://localhost")
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+def log(msg):
+    print(f"{datetime.now():%a %d-%m-%Y %H:%M:%S} {msg}")
 
 def get_access_token():
     usertokens = None
@@ -75,9 +79,9 @@ def fetch_location_samples(exercise_id, access_token):
                         lon = format(float(lon), ".4f")
                         return lat, lon
         except ET.ParseError as e:
-            print(f"ET Parse Error: {e}")
+            log(f"ET Parse Error: {e}")
     else:
-        print(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
+        log(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
     return None, None
 
 def process_exercise(exercise, training_data, access_token):
@@ -144,7 +148,7 @@ def save_to_redis(training_data):
                     distance = float(input(f"Enter distance for {start_time}: "))
                     break  # Exit loop when valid input is entered
                 except ValueError:
-                    print("Invalid input. Please enter a valid number.")
+                    log("Invalid input. Please enter a valid number.")
         redis_data = {
             "session_id": session_id,
             "exercise_id": data.get("exercise_id"),
@@ -160,7 +164,7 @@ def save_to_redis(training_data):
         pipeline.rpush(f"exercise:{year}", data['exercise_id'])
         session_id += 1
     pipeline.execute()
-    print(f"{rows} row(s) inserted to redis.")
+    log(f"{rows} row(s) inserted to redis.")
 
 def parallel_process(exercises, access_token):
     training_data = []
@@ -186,10 +190,10 @@ def fetch_data():
     training_data = parallel_process(exercises, access_token)
     if training_data:
         save_to_redis(training_data)
-        print("Data fetching finished.")
+        log("Data fetching finished.")
         return sys.exit(0)
-    print("No training data to append")
-    return sys.exit(1)
+    log("No training data to append")
+    return sys.exit(2)
 
 if __name__ == "__main__":
     fetch_data()

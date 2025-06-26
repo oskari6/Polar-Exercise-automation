@@ -3,6 +3,9 @@ import pandas as pd
 from openpyxl import load_workbook
 from datetime import datetime
 
+def log(msg):
+    print(f"{datetime.now():%a %d-%m-%Y %H:%M:%S} {msg}")
+
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 year = datetime.now().year
@@ -30,7 +33,7 @@ for exercise_id in exercise_ids:
 #Convert the filtered data to a DataFrame
 df = pd.DataFrame(data)
 if df.empty:
-    print("No new data to append.")
+    log("No new data to append.")
     exit()
 
 df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
@@ -45,4 +48,4 @@ for i, row in enumerate(df.itertuples(index=False), start=last_row+1):
     for col, value in enumerate(row, start=1):  # Start from column 1 (A)
         sheet.cell(row=i, column=col, value=value)
 book.save(xlsm_file)
-print("Data successfully written to the workbook!")
+log("Data successfully written to the workbook!")
