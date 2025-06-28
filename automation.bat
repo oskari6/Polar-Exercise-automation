@@ -13,8 +13,22 @@ echo ===================================================================== >> %l
 wsl -d %distro% -- bash -c "sudo /usr/sbin/service docker start" >> %logFile% 2>&1
 echo. >> %logFile%
 
+set docker_attempts=0
+:waitForDocker
+set /a docker_attempts+=1
+timeout /t 2 >nul
+wsl -d %distro% -- bash -c "docker info" >nul 2>&1
+if %errorlevel% neq 0 (
+    if %docker_attempts% GEQ 10 (
+        echo %date% %time% Docker failed to start. >> %logFile%
+        exit /b
+    )
+    goto waitForDocker
+)
+echo %date% %time% Docker is ready! >> %logFile%
+
 echo %date% %time% Starting Redis... >> %logFile%
-wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >nul 2>nul
+wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
 set attempts=0
 :waitForRedis
@@ -44,12 +58,11 @@ if %fetch_error% equ 1 (
     echo %date% %time% Inserting data... >> %logFile%
     call %python% insert_data.py >> %logFile% 2>&1
 
-    echo %date% %time% Creating redis backup... >> %logFile%
+    <nul set /p="%date% %time% Creating redis backup... " >> %logFile%
     wsl -d %distro% -- bash -c "docker exec -it redis-server redis-cli BGSAVE" >> %logFile% 2>&1
 
     <nul set /p="%date% %time% Creating excel backup... " >> %logFile%
     copy /Y "%excelDir%" %workDir%\backups >> %logFile% 2>&1
-    echo. >> %logFile%
 )
 
 <nul set /p="%date% %time% Stopping Redis... " >> %logFile%

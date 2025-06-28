@@ -1,9 +1,6 @@
 import xlwings as xw
 
-def extract_and_move_values():
-    wb = xw.Book.caller() 
-    ws = wb.sheets.active
-
+def extract_and_move_values(ws):
     source_range = ws.range("L2:L368")
     target_range = ws.range("AA2:AA7") # shoe format result column
 
@@ -32,5 +29,6 @@ def extract_and_move_values():
                 print(f"Skipping invalid format in cell {cell.address}:{cell.value}")
 
 if __name__ == "__main__":
-    xw.Book("C:\Users\Oskari\OneDrive - Intragen\excel\exercise_data.xlsm").set_mock_caller()
-    extract_and_move_values()
+    wb = xw.Book(r"C:\Users\OskariSulkakoski\OneDrive - Intragen\excel\exercise_data.xlsm")
+    ws = wb.sheets["2025"]
+    extract_and_move_values(ws)
