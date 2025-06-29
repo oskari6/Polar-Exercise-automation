@@ -9,3 +9,8 @@ services:
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-server", "--test-memory", "2"]
+      interval: 2s
+      timeout: 1s
+      retries: 15

@@ -30,19 +30,10 @@ echo %date% %time% Docker is ready! >> %logFile%
 echo %date% %time% Starting Redis... >> %logFile%
 wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
-set attempts=0
-:waitForRedis
-set /a attempts+=1
-timeout /t 2 >nul
-
-call %python% connect_redis.py
+call %python% check_redis_health.py >> %logFile% 2>&1
 if %errorlevel% neq 0 (
-    if %attempts% GEQ 10 (
-        <nul set /p="%date% %time% Redis failed to start." >> %logFile%
-        echo. >> %logFile%
-        exit /b
-    )
-    goto waitForRedis
+    echo %date% %time% Redis failed to start. >> %logFile%
+    exit /b
 )
 echo %date% %time% Redis is ready! >> %logFile%
 
