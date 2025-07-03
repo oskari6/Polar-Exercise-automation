@@ -1,6 +1,7 @@
 @echo on
 setlocal
 set workDir=C:\Temp\Python\training-diary
+cd /d %workDir%
 set logFile=C:\Temp\Python\training-diary\logs\training_data.log
 set excelDir=C:\Users\OskariSulkakoski\OneDrive - Intragen\excel\exercise_data.xlsm
 set containerName=redis-server
@@ -13,20 +14,6 @@ echo ===================================================================== >> %l
 wsl -d %distro% -- bash -c "sudo /usr/sbin/service docker start" >> %logFile% 2>&1
 echo. >> %logFile%
 
-set docker_attempts=0
-:waitForDocker
-set /a docker_attempts+=1
-timeout /t 2 >nul
-wsl -d %distro% -- bash -c "docker info" >nul 2>&1
-if %errorlevel% neq 0 (
-    if %docker_attempts% GEQ 10 (
-        echo %date% %time% Docker failed to start. >> %logFile%
-        exit /b
-    )
-    goto waitForDocker
-)
-echo %date% %time% Docker is ready! >> %logFile%
-
 echo %date% %time% Starting Redis... >> %logFile%
 wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
@@ -37,7 +24,6 @@ if %errorlevel% neq 0 (
 )
 echo %date% %time% Redis is ready! >> %logFile%
 
-echo %date% %time% Fetching data... >> %logFile%
 call %python% polar_api/fetch_data.py >> %logFile% 2>&1
 set fetch_error=%errorlevel%
 
@@ -46,9 +32,6 @@ if %fetch_error% equ 1 (
 ) else if %fetch_error% equ 2 (
     echo %date% %time% No data to insert. >> %logFile%
 ) else (
-    echo %date% %time% Inserting data... >> %logFile%
-    call %python% insert_data.py >> %logFile% 2>&1
-
     <nul set /p="%date% %time% Creating redis backup... " >> %logFile%
     wsl -d %distro% -- bash -c "docker exec -it redis-server redis-cli BGSAVE" >> %logFile% 2>&1
 
