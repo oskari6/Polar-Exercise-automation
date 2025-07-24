@@ -34,6 +34,11 @@ if %fetch_error% equ 1 (
 ) else (
     <nul set /p="%date% %time% Creating redis backup... " >> %logFile%
     wsl -d %distro% -- bash -c "docker exec -it redis-server redis-cli BGSAVE" >> %logFile% 2>&1
+    for /l %%i in (1,1,10) do (
+        timeout /t 1 >nul
+        wsl -d %distro% -- bash -c "docker exec redis-server redis-cli INFO Persistence" | findstr "bgsave_in_progress" | findstr "0" >nul && goto done
+    )
+    :done
 
     <nul set /p="%date% %time% Creating excel backup... " >> %logFile%
     copy /Y "%excelDir%" %workDir%\backups >> %logFile% 2>&1

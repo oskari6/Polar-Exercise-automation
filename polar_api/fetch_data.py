@@ -35,7 +35,8 @@ accesslink = AccessLink(client_id=config['client_id'],
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 def log(msg):
-    print(f"{datetime.now():%a %d-%m-%Y %H:%M:%S} {msg}")
+    now = datetime.now()
+    print(f"{now:%a %m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:02d} {msg}")
 
 def get_access_token():
     usertokens = None
