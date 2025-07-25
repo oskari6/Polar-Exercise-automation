@@ -4,7 +4,7 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*parse_dates.*")
 # debug
-os.chdir("C:\\Temp\\Python\\training-diary\\polar_api")
+os.chdir("C:\\Temp\\training-diary\\polar_api")
 
 import re
 from genericpath import exists
@@ -213,7 +213,7 @@ def insert_data():
     df = pd.DataFrame(data)
     if df.empty:
         log("No new data to append.")
-        exit()
+        exit(2)
 
     df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")

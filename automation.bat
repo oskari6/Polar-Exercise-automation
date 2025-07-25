@@ -1,12 +1,12 @@
 @echo on
 setlocal
-set workDir=C:\Temp\Python\training-diary
+set workDir=C:\Temp\training-diary
 cd /d %workDir%
-set logFile=C:\Temp\Python\training-diary\logs\training_data.log
+set logFile=C:\Temp\training-diary\logs\training_data.log
 set excelDir=C:\Users\OskariSulkakoski\OneDrive - Intragen\excel\exercise_data.xlsm
 set containerName=redis-server
 set distro=Ubuntu
-set python=C:\Temp\Python\training-diary\.venv\Scripts\python.exe
+set python=C:\Temp\training-diary\.venv\Scripts\python.exe
 set startTime=%TIME%
 
 echo ===================================================================== >> %logFile%
@@ -15,17 +15,10 @@ wsl -d %distro% -- bash -c "sudo /usr/sbin/service docker start" >> %logFile% 2>
 echo. >> %logFile%
 
 echo %date% %time% Starting Redis... >> %logFile%
-wsl -d %distro% -- bash -c "cd /mnt/c/Temp/Python/training-diary && docker-compose up -d" >> %logFile% 2>&1
+wsl -d %distro% -- bash -c "cd /mnt/c/Temp/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
-call %python% check_redis_health.py >> %logFile% 2>&1
-if %errorlevel% neq 0 (
-    echo %date% %time% Redis failed to start. >> %logFile%
-    exit /b
-)
-echo %date% %time% Redis is ready! >> %logFile%
-
-call %python% polar_api/fetch_data.py >> %logFile% 2>&1
-set fetch_error=%errorlevel%
+%python% polar_api/fetch_data.py >> %logFile% 2>&1
+set fetch_error=%ERRORLEVEL%
 
 if %fetch_error% equ 1 (
     echo %date% %time% Fetching failed. >> %logFile%
@@ -34,11 +27,6 @@ if %fetch_error% equ 1 (
 ) else (
     <nul set /p="%date% %time% Creating redis backup... " >> %logFile%
     wsl -d %distro% -- bash -c "docker exec -it redis-server redis-cli BGSAVE" >> %logFile% 2>&1
-    for /l %%i in (1,1,10) do (
-        timeout /t 1 >nul
-        wsl -d %distro% -- bash -c "docker exec redis-server redis-cli INFO Persistence" | findstr "bgsave_in_progress" | findstr "0" >nul && goto done
-    )
-    :done
 
     <nul set /p="%date% %time% Creating excel backup... " >> %logFile%
     copy /Y "%excelDir%" %workDir%\backups >> %logFile% 2>&1
@@ -54,3 +42,4 @@ echo. >> %logFile%
 set endTime=%TIME%
 for /f %%t in ('powershell -Command "([datetime]::Parse('%endTime%') - [datetime]::Parse('%startTime%')).TotalSeconds"') do set duration=%%t
 echo %date% %time% Finished in %duration% seconds. >> %logFile%
+start "" "%excelDir%"

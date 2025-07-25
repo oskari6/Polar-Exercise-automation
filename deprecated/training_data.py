@@ -1,7 +1,7 @@
 import os
 
 # debugging purposes
-os.chdir("C:\\Temp\\Python\\training-diary\\polar_api")
+os.chdir("C:\\Temp\\training-diary\\polar_api")
 
 import platform
 import re

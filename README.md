@@ -21,7 +21,7 @@
       - user1 ALL=(ALL) NOPASSWD: /usr/sbin/service docker start
       - user1 ALL=(ALL) NOPASSWD: /usr/bin/docker
 
-## What you get
+## What is offered
 
 - Training data from your Polar watch / Polar flow fetched, formatted, inserted and backedup automatically.
 - Weather data for each exercise.
