@@ -15,7 +15,6 @@ def fetch_weather(lat, lon, start):
         timezone = pytz.timezone("Europe/Helsinki")
         start = pd.to_datetime(start).tz_localize(timezone).tz_convert(None)
         end = start + timedelta(hours=1)
-        print(start)
         stations = Stations().nearby(lat, lon)
         station_df = stations.fetch(5)
 

@@ -36,7 +36,7 @@ redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 def log(msg):
     now = datetime.now()
-    print(f"{now:%a %m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:02d} {msg}")
+    print(f"{now:%a %m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:01d} {msg}")
 
 def get_access_token():
     usertokens = None
@@ -135,8 +135,10 @@ def process_exercise(exercise, training_data, access_token):
         })
 
 def save_to_redis(training_data):
-    last_key = redis_client.scan_iter(match="exercise:session:*", count=1)
-    last_key = sorted(last_key, key=lambda k: int(k.split(":")[-1]))[-1]
+    keys = list(redis_client.scan_iter(match="exercise:session:*", count=1))
+    if not keys:
+        raise ValueError("No session keys found in Redis.")
+    last_key = sorted(keys, key=lambda k: int(k.split(":")[-1]))[-1]
     session_id = int(last_key.split(":")[-1]) + 1
 
     pipeline = redis_client.pipeline()
@@ -218,7 +220,7 @@ def insert_data():
     df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
     df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
-    df["date"] = pd.to_datetime(df["date"]).dt.strftime('%m/%d/%Y')
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime('%d-%b')
 
     last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) if any(row[:3])), default=1)
 

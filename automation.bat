@@ -17,6 +17,17 @@ echo. >> %logFile%
 echo %date% %time% Starting Redis... >> %logFile%
 wsl -d %distro% -- bash -c "cd /mnt/c/Temp/training-diary && docker-compose up -d" >> %logFile% 2>&1
 
+<nul set /p="%date% %time% Waiting for Redis to be ready... " >> %logFile%
+echo. >> %logFile%
+:wait_redis
+wsl -d %distro% -- bash -c "docker exec %containerName% redis-cli ping" | findstr /C:"PONG" >nul
+if errorlevel 1 (
+    timeout /t 1 >nul
+    goto wait_redis
+)
+<nul set /p="%date% %time%  Redis is ready." >> %logFile%
+echo. >> %logFile%
+
 %python% polar_api/fetch_data.py >> %logFile% 2>&1
 set fetch_error=%ERRORLEVEL%
 
