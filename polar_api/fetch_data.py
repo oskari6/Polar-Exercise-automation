@@ -3,9 +3,6 @@ import sys
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*parse_dates.*")
-# debug
-os.chdir("C:\\Temp\\training-diary\\polar_api")
-
 import re
 from genericpath import exists
 
@@ -23,8 +20,8 @@ from threading import Lock
 import pandas as pd
 from openpyxl import load_workbook
 
-CONFIG_FILENAME = "config.yml"
-TOKEN_FILENAME = "usertokens.yml"
+CONFIG_FILENAME = "polar_api/config.yml"
+TOKEN_FILENAME = "polar_api/usertokens.yml"
 
 config = load_config(CONFIG_FILENAME)
 
@@ -32,7 +29,11 @@ accesslink = AccessLink(client_id=config['client_id'],
                         client_secret=config['client_secret'],
                         redirect_url="http://localhost")
 
-redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", 6379)),
+    decode_responses=True
+)
 
 def log(msg):
     now = datetime.now()
@@ -190,7 +191,7 @@ def parallel_process(exercises, access_token):
 
 def insert_data():
     year = datetime.now().year
-    xlsm_file = "C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm"
+    xlsm_file = "host_excel/exercise_data.xlsm"
     book = load_workbook(xlsm_file, keep_vba=True)
     sheet = book[str(year)]
 
@@ -220,14 +221,18 @@ def insert_data():
     df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
     df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
-    df["date"] = pd.to_datetime(df["date"]).dt.strftime('%d-%b')
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
     last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) if any(row[:3])), default=1)
 
     #Append the filtered data
     for i, row in enumerate(df.itertuples(index=False), start=last_row+1):
         for col, value in enumerate(row, start=1):  # Start from column 1 (A)
-            sheet.cell(row=i, column=col, value=value)
+            cell = sheet.cell(row=i, column=col, value=value)
+
+            if col == 4 and pd.notnull(value):
+                cell.number_format = 'DD-MMM'
+
     book.save(xlsm_file)
 
 # main fetch

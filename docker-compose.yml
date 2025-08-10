@@ -3,14 +3,23 @@ services:
     image: redis:latest
     container_name: redis-server
     restart: unless-stopped
-    volumes:
-      - ./backups:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-server", "--test-memory", "2"]
-      interval: 2s
-      timeout: 1s
-      retries: 15
+    volumes:
+      - ./backups:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+  app:
+    build: .
+    container_name: training-diary-app
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis-server
+      - REDIS_PORT=6379
+    volumes:
+      - .:/app
+      - /mnt/c/Users/OskariSulkakoski/OneDrive - Intragen/excel:/app/host_excel
+
+volumes:
+  redis-data:
