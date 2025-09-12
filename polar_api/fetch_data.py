@@ -113,23 +113,22 @@ def process_exercise(exercise, training_data, access_token):
         # outside exercises
         else:
             weather_time = dt.strftime("%Y-%m-%dT%H")
-            # latitude and longitude for weather fetch
             lat, lon = fetch_location_samples(exercise_id, access_token)
             distance_meters = exercise.get('distance')
             distance = f"{distance_meters / 1000:.2f}" if distance_meters is not None else "0.00"
-            temperature = fetch_weather(lat, lon, weather_time) if lat and lon else None
+            weather = fetch_weather(lat, lon, weather_time) if lat and lon else None
 
         heart_rate = exercise.get('heart_rate', {})
         avg_hr = heart_rate.get('average', None)
         max_hr = heart_rate.get('maximum', None)
-        
         training_data.append({
             "start_time": dt.strftime("%Y-%m-%d"),
             "duration": format_duration(duration_seconds),
             "distance": distance,
             "hr_avg": avg_hr if avg_hr is not None else None,
             "hr_max": max_hr if max_hr is not None else None,
-            "temperature": round(temperature + 0.5) if temperature is not None else None,
+            "temperature": round(weather["temperature"] + 0.5),
+            "wind_speed": round(float(weather["wind_speed"]),1),
             "timestamp": start_time,
             "exercise_id": exercise_id,
             "treadmill": is_treadmill
@@ -165,7 +164,8 @@ def save_to_redis(training_data):
             "distance": distance,
             "hr_avg": data["hr_avg"] if data["hr_avg"] is not None else "",
             "hr_max": data["hr_max"] if data["hr_max"] is not None else "",
-            "temperature": data["temperature"] if data["temperature"] is not None else "",
+            "temperature": data["temperature"],
+            "wind_speed": data["wind_speed"],
         }
         pipeline.hset(f"exercise:session:{session_id}", mapping=redis_data)
         pipeline.rpush(f"exercise:{year}", data['exercise_id'])
@@ -218,10 +218,13 @@ def insert_data():
         log("No new data to append.")
         exit(2)
 
-    df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature"]]
+    df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature", "wind_speed"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
     df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
+    df["wind_speed"] = pd.to_numeric(df["wind_speed"],errors="coerce")
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
 
     last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) if any(row[:3])), default=1)
 
@@ -241,6 +244,7 @@ def fetch_data():
     access_token = get_access_token()
     exercises = accesslink.get_exercises(access_token=access_token)
     training_data = parallel_process(exercises, access_token)
+
     if training_data:
         save_to_redis(training_data)
         log("Inserting data...")
@@ -252,3 +256,5 @@ def fetch_data():
 if __name__ == "__main__":
     log("Fetching data...")
     fetch_data()
+
+# docker compose run --rm app python polar_api/fetch_data.py

@@ -19,7 +19,7 @@ services:
       - REDIS_PORT=6379
     volumes:
       - .:/app
-      - /mnt/c/Users/OskariSulkakoski/OneDrive - Intragen/excel:/app/host_excel
+      - "/mnt/c/Users/OskariSulkakoski/OneDrive - Intragen/excel:/app/host_excel"
 
 volumes:
   redis-data:
