@@ -1,28 +1,34 @@
-import redis
+import redis, json
+import os
 
-r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
-exercise_keys = r.keys('exercise:session:*')
+r = redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", 6379)),
+    decode_responses=True
+)
+redis_key = "exercise:2025"
+
+entries = r.lrange(redis_key, 0, -1)
 
 exercise_id_seen = set()
-keys_to_delete = []
+duplicates = 0
 
-# Go through all hashes
-for key in exercise_keys:
-    exercise_data = r.hgetall(key)
-    if not exercise_data:
+for raw in entries:
+    try:
+        entry = json.loads(raw)
+    except json.JSONDecodeError:
         continue
-    
-    exercise_id = exercise_data.get('exercise_id', '')
+
+    exercise_id = entry.get("exercise_id")
     if not exercise_id:
         continue
-    
+
     if exercise_id in exercise_id_seen:
-        keys_to_delete.append(key)
+        # remove duplicate entry from list
+        r.lrem(redis_key, 1, raw)   # remove first occurrence of this exact JSON
+        duplicates += 1
+        print(f"Deleted duplicate exercise {exercise_id}")
     else:
         exercise_id_seen.add(exercise_id)
 
-for key in keys_to_delete:
-    r.delete(key)
-    print(f"Deleted duplicate: {key}")
-
-print(f"Total duplicates deleted: {len(keys_to_delete)}")
+print(f"Total duplicates deleted: {duplicates}")

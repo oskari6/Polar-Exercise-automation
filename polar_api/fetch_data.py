@@ -19,6 +19,7 @@ from threading import Lock
 
 import pandas as pd
 from openpyxl import load_workbook
+import json
 
 CONFIG_FILENAME = "polar_api/config.yml"
 TOKEN_FILENAME = "polar_api/usertokens.yml"
@@ -89,7 +90,7 @@ def fetch_location_samples(exercise_id, access_token):
         log(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
     return None, None
 
-def process_exercise(exercise, training_data, access_token):
+def process_exercise(exercise, training_data, access_token, exercise_ids):
     sport = exercise.get("sport", "unknown")
     detailed_sport = exercise.get("detailed_sport_info", "unknown")
     is_treadmill = False
@@ -99,7 +100,7 @@ def process_exercise(exercise, training_data, access_token):
         # if already fetched, skip
         start_time = exercise.get('start_time')
         dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
-        if redis_client.lpos(f"exercise:{dt.year}",exercise_id) is not None:
+        if exercise_id in exercise_ids:
             return
         duration_iso = exercise.get('duration')
         duration_seconds = parse_iso8601_duration(duration_iso)
@@ -109,7 +110,7 @@ def process_exercise(exercise, training_data, access_token):
         # treadmill exercise format
         if detailed_sport == "TREADMILL_RUNNING":
             is_treadmill = True
-            temperature = None
+            weather = None
         # outside exercises
         else:
             weather_time = dt.strftime("%Y-%m-%dT%H")
@@ -127,27 +128,23 @@ def process_exercise(exercise, training_data, access_token):
             "distance": distance,
             "hr_avg": avg_hr if avg_hr is not None else None,
             "hr_max": max_hr if max_hr is not None else None,
-            "temperature": round(weather["temperature"] + 0.5),
-            "wind_speed": round(float(weather["wind_speed"]),1),
+            "temperature": round(weather["temperature"] + 0.5) if weather and weather.get("temperature") is not None else None,
+            "wind_speed": round(float(weather["wind_speed"]), 1) if weather and weather.get("wind_speed") is not None else None,
             "timestamp": start_time,
             "exercise_id": exercise_id,
             "treadmill": is_treadmill
         })
 
 def save_to_redis(training_data):
-    keys = list(redis_client.scan_iter(match="exercise:session:*", count=1))
-    if not keys:
-        raise ValueError("No session keys found in Redis.")
-    last_key = sorted(keys, key=lambda k: int(k.split(":")[-1]))[-1]
-    session_id = int(last_key.split(":")[-1]) + 1
-
     pipeline = redis_client.pipeline()
     rows = 0
+
     for data in training_data:
         rows += 1
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         distance = data.get("distance")
         start_time = data.get("start_time")
+
         if data.get("treadmill"):
             while True:
                 try:
@@ -155,8 +152,8 @@ def save_to_redis(training_data):
                     break  # Exit loop when valid input is entered
                 except ValueError:
                     log("Invalid input. Please enter a valid number.")
+
         redis_data = {
-            "session_id": session_id,
             "exercise_id": data.get("exercise_id"),
             "timestamp": data.get("timestamp"),
             "date": start_time,
@@ -167,19 +164,25 @@ def save_to_redis(training_data):
             "temperature": data["temperature"],
             "wind_speed": data["wind_speed"],
         }
-        pipeline.hset(f"exercise:session:{session_id}", mapping=redis_data)
-        pipeline.rpush(f"exercise:{year}", data['exercise_id'])
-        session_id += 1
+
+        pipeline.rpush(f"exercise:{year}", json.dumps(redis_data))
+
     pipeline.execute()
     log(f"{rows} row(s) inserted to redis.")
+
+def get_exercise_ids(year):
+    redis_key = f"exercise:{year}"
+    raw_entries = redis_client.lrange(redis_key, 0, -1)
+    return [json.loads(raw).get("exercise_id") for raw in raw_entries if raw]
 
 def parallel_process(exercises, access_token):
     training_data = []
     lock = Lock()
+    ids = get_exercise_ids(datetime.now().year)
 
     def wrapped_process(exercise):
         local_data = []
-        process_exercise(exercise, local_data, access_token)
+        process_exercise(exercise, local_data, access_token, ids)
         if local_data:
             with lock:
                 training_data.extend(local_data)
@@ -195,22 +198,21 @@ def insert_data():
     book = load_workbook(xlsm_file, keep_vba=True)
     sheet = book[str(year)]
 
-    #Collect all existing exercise_ids from the workbook
-    workbook_session_ids = set()
-    workbook_session_ids.update(row[1] for row in sheet.iter_rows(min_row=2, values_only=True) if row[1])
+    workbook_exercise_ids = set(
+        row[0] for row in sheet.iter_rows(min_row=2, values_only=True) if row[0]
+    )
 
-    #Fetch data from Redis, excluding existing session_ids
+    redis_key = f"exercise:{year}"
+    if not redis_client.exists(redis_key):
+        log(f"Warning: No Redis list found for {year}. Nothing to insert.")
+        return
+
+    raw_entries = redis_client.lrange(redis_key, 0, -1)
     data = []
-    exercise_ids = redis_client.lrange(f"exercise:{year}", 0, -1)
-    session_keys = sorted(redis_client.scan_iter("exercise:session:*"), key=lambda k: int(k.split(":")[-1]), reverse=True)
-
-    for exercise_id in exercise_ids:
-        if exercise_id not in workbook_session_ids:
-            for session_key in session_keys:
-                session_data = redis_client.hgetall(session_key)
-                if session_data.get("exercise_id") == exercise_id:
-                    data.append(session_data)
-                    break
+    for raw in raw_entries:
+        entry = json.loads(raw)
+        if entry.get("exercise_id") not in workbook_exercise_ids:
+            data.append(entry)
 
     #Convert the filtered data to a DataFrame
     df = pd.DataFrame(data)
@@ -218,7 +220,7 @@ def insert_data():
         log("No new data to append.")
         exit(2)
 
-    df = df[["session_id","exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature", "wind_speed"]]
+    df = df[["exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature", "wind_speed"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
     df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
     df["wind_speed"] = pd.to_numeric(df["wind_speed"],errors="coerce")
@@ -233,7 +235,7 @@ def insert_data():
         for col, value in enumerate(row, start=1):  # Start from column 1 (A)
             cell = sheet.cell(row=i, column=col, value=value)
 
-            if col == 4 and pd.notnull(value):
+            if col == 3 and pd.notnull(value):
                 cell.number_format = 'DD-MMM'
 
     book.save(xlsm_file)

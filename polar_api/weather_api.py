@@ -17,7 +17,7 @@ def fetch_weather(lat, lon, start):
         end = start + timedelta(hours=1)
         
         stations = Stations().nearby(lat, lon)
-        station_df = stations.fetch(5)
+        station_df = stations.fetch(20)
 
         if station_df.empty:
             log("No stations with recent hourly data found.")
@@ -26,7 +26,6 @@ def fetch_weather(lat, lon, start):
         for station_id in station_df.index:
             data = Hourly(station_id, start, end).fetch()
             if not data.empty:
-                log(data["wspd"].iloc[0])
                 return {
                     "temperature": data["temp"].iloc[0] if "temp" in data.columns else "",
                     "wind_speed": float(data["wspd"].iloc[0]) if "wspd" in data.columns else "",

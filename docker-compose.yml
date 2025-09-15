@@ -3,15 +3,15 @@ services:
     image: redis:latest
     container_name: redis-server
     restart: unless-stopped
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    command: ["redis-server", "/app/redis.conf"]
     ports:
       - "6379:6379"
     volumes:
+      - .:/app
       - ./backups:/data
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
   app:
     build: .
-    container_name: training-diary-app
+    container_name: training-diary
     depends_on:
       - redis
     environment:
