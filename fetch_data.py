@@ -5,6 +5,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*parse_dates.*")
 import re
 from genericpath import exists
+import time
 
 from utils import load_config
 from accesslink import AccessLink
@@ -21,8 +22,8 @@ import pandas as pd
 from openpyxl import load_workbook
 import json
 
-CONFIG_FILENAME = "polar_api/config.yml"
-TOKEN_FILENAME = "polar_api/usertokens.yml"
+CONFIG_FILENAME = "config.yml"
+TOKEN_FILENAME = "usertokens.yml"
 
 config = load_config(CONFIG_FILENAME)
 
@@ -90,46 +91,59 @@ def fetch_location_samples(exercise_id, access_token):
         log(f"Failed to fetch GPX data: HTTP {response.status_code} - {response.reason}")
     return None, None
 
+def safe_round(value, ndigits=0, offset=0):
+    if value is None:
+        return None
+    return round(float(value) + offset, ndigits)
+
 def process_exercise(exercise, training_data, access_token, exercise_ids):
     sport = exercise.get("sport", "unknown")
     detailed_sport = exercise.get("detailed_sport_info", "unknown")
-    is_treadmill = False
+    is_treadmill = detailed_sport == "TREADMILL_RUNNING"
+
     # only running exercises tracked 
     if "RUNNING" in sport:
         exercise_id = exercise.get("id")
         # if already fetched, skip
-        start_time = exercise.get('start_time')
-        dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
         if exercise_id in exercise_ids:
             return
-        duration_iso = exercise.get('duration')
-        duration_seconds = parse_iso8601_duration(duration_iso)
+        duration_seconds = parse_iso8601_duration(exercise.get('duration'))
         # not shorter than 5min exercises
         if duration_seconds < 300:
             return
-        # treadmill exercise format
-        if detailed_sport == "TREADMILL_RUNNING":
-            is_treadmill = True
-            weather = None
+        start_time = exercise.get('start_time')
+        dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+
+        distance = None
+        temperature = None
+        wind_speed = None
+
         # outside exercises
-        else:
+        if not is_treadmill:
             weather_time = dt.strftime("%Y-%m-%dT%H")
             lat, lon = fetch_location_samples(exercise_id, access_token)
+
             distance_meters = exercise.get('distance')
-            distance = f"{distance_meters / 1000:.2f}" if distance_meters is not None else "0.00"
-            weather = fetch_weather(lat, lon, weather_time) if lat and lon else None
+            distance = f"{distance_meters / 1000:.2f}" if distance_meters else "0.00"
+
+            if lat is not None and lon is not None:
+                weather = fetch_weather(lat, lon, weather_time)
+                if weather is not None:
+                    temperature = safe_round(weather.get("temperature"), 0, offset=0.5)
+                    wind_speed = safe_round(weather.get("wind_speed"), 1)
 
         heart_rate = exercise.get('heart_rate', {})
-        avg_hr = heart_rate.get('average', None)
-        max_hr = heart_rate.get('maximum', None)
+        avg_hr = heart_rate.get('average')
+        max_hr = heart_rate.get('maximum')
+
         training_data.append({
             "start_time": dt.strftime("%Y-%m-%d"),
             "duration": format_duration(duration_seconds),
             "distance": distance,
-            "hr_avg": avg_hr if avg_hr is not None else None,
-            "hr_max": max_hr if max_hr is not None else None,
-            "temperature": round(weather["temperature"] + 0.5) if weather and weather.get("temperature") is not None else None,
-            "wind_speed": round(float(weather["wind_speed"]), 1) if weather and weather.get("wind_speed") is not None else None,
+            "hr_avg": avg_hr,
+            "hr_max": max_hr,
+            "temperature": temperature,
+            "wind_speed": wind_speed,
             "timestamp": start_time,
             "exercise_id": exercise_id,
             "treadmill": is_treadmill
@@ -138,8 +152,13 @@ def process_exercise(exercise, training_data, access_token, exercise_ids):
 def save_to_redis(training_data):
     pipeline = redis_client.pipeline()
     rows = 0
+    log(training_data)
+    training_data_sorted = sorted(
+        training_data,
+        key=lambda d: datetime.strptime(d["timestamp"], "%Y-%m-%dT%H:%M:%S"),
+    )
 
-    for data in training_data:
+    for data in training_data_sorted:
         rows += 1
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         distance = data.get("distance")
@@ -159,8 +178,8 @@ def save_to_redis(training_data):
             "date": start_time,
             "duration": data.get("duration"),
             "distance": distance,
-            "hr_avg": data["hr_avg"] if data["hr_avg"] is not None else "",
-            "hr_max": data["hr_max"] if data["hr_max"] is not None else "",
+            "hr_avg": data["hr_avg"],
+            "hr_max": data["hr_max"],
             "temperature": data["temperature"],
             "wind_speed": data["wind_speed"],
         }
@@ -259,4 +278,4 @@ if __name__ == "__main__":
     log("Fetching data...")
     fetch_data()
 
-# docker compose run --rm app python polar_api/fetch_data.py
+# docker compose run --rm app python fetch_data.py

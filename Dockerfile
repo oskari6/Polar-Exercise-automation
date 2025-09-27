@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # COPY redis.conf /usr/local/etc/redis/redis.conf
 
 # Default command (can be overridden in docker-compose)
-CMD ["python", "polar_api/fetch_data.py"]
+CMD ["python", "fetch_data.py"]

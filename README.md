@@ -30,15 +30,14 @@
 
 - Set virtual environment in the root of the project: `.venv`
 - Install requirements.txt into .venv
-- Adjust the paths to match the ones you havein `automation.bat` and possibly elsewhere
-- run `automation.bat`. Note that polar api starts tracking exercices from the moment you register the API client.
+- Adjust the paths to match the ones you have in `run_fetch.sh` and possibly elsewhere
+- run `run_fetch.sh`. Note that polar api starts tracking exercices from the moment you register the API client.
 
 # Functionalities
 
-- automation.bat the main script
-- axecute_automation.vbs potential task scheduler automation for daily fetches. Schedule this script to run daily. Runs silently
-- excel_shoes.py formatting for multiple shoes used in same exercise. n-1,a-2 into excel cell.
-- fetch_data.py gets exercise data and appends to redis hashtable if any new exercises are detected. Inserts data to excel
+- run_fetch.sh the main script
+- excel_shoes.py formatting for multiple shoes used in same exercise. n-1,a-2 into excel cell. should be implemented through windows directory rather than docker / wsl for ease of use
+- fetch_data.py gets exercise data and appends to redis list if any new exercises are detected. Inserts data to excel
 - /pandas/ formatting scripts
 - /deprecated/ old implementation using sqlite database and odbc connection instead for inserting data (slower)
 - /backups/ excel spreadsheet backup on every run and redis backup file.
