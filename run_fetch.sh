@@ -45,7 +45,7 @@ else
     docker cp "$DUMP_FILE" "$BACKUP_FILE" >> "$LOG_FILE" 2>&1
 
     echo "$(date +"%F %T") Backing up Excel file..." >> "$LOG_FILE"
-    docker cp "$EXCEL_FILE" "$BACKUP_DIR/" >> "$LOG_FILE" 2>&1
+    cp "$EXCEL_FILE" "$BACKUP_DIR/" >> "$LOG_FILE" 2>&1
 fi
 
 echo "$(date +"%F %T") Stopping containers..." >> "$LOG_FILE"
@@ -55,5 +55,5 @@ echo "$(date +"%F %T") Finished." >> "$LOG_FILE"
 
 # Optionally open the Excel file in Windows (when running via WSL)
 if grep -qi microsoft /proc/version; then
-  cmd.exe /C start "" "C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm"
+  cmd.exe /C "cd /d C:\\ && start \"\" \"C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm\""
 fi

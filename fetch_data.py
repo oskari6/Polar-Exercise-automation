@@ -39,7 +39,7 @@ redis_client = redis.Redis(
 
 def log(msg):
     now = datetime.now()
-    print(f"{now:%a %m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:01d} {msg}")
+    print(f"{now:%m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:01d} {msg}")
 
 def get_access_token():
     usertokens = None
@@ -152,7 +152,7 @@ def process_exercise(exercise, training_data, access_token, exercise_ids):
 def save_to_redis(training_data):
     pipeline = redis_client.pipeline()
     rows = 0
-    log(training_data)
+
     training_data_sorted = sorted(
         training_data,
         key=lambda d: datetime.strptime(d["timestamp"], "%Y-%m-%dT%H:%M:%S"),
@@ -163,11 +163,13 @@ def save_to_redis(training_data):
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         distance = data.get("distance")
         start_time = data.get("start_time")
+        weekday = datetime.now().strftime("%a")
+        duration = data.get("duration")
 
         if data.get("treadmill"):
             while True:
                 try:
-                    distance = float(input(f"Enter distance for {start_time}: "))
+                    distance = float(input(f"Enter distance for {start_time} ({weekday}, duration: {duration}): "))
                     break  # Exit loop when valid input is entered
                 except ValueError:
                     log("Invalid input. Please enter a valid number.")
@@ -176,7 +178,7 @@ def save_to_redis(training_data):
             "exercise_id": data.get("exercise_id"),
             "timestamp": data.get("timestamp"),
             "date": start_time,
-            "duration": data.get("duration"),
+            "duration": duration,
             "distance": distance,
             "hr_avg": data["hr_avg"],
             "hr_max": data["hr_max"],
