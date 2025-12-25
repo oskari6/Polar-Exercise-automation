@@ -28,4 +28,4 @@ def remove_exercise(exercise_id, year):
             redis_client.lrem(redis_key, 1, raw)  # remove first matching occurrence
 
 if __name__ == "__main__":
-    remove_exercise("PdZYBNMZ", 2025)
+    remove_exercise("PdZYBNMZ", 2026)

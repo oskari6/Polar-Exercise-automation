@@ -55,5 +55,5 @@ echo "$(date +"%F %T") Finished." >> "$LOG_FILE"
 
 # Optionally open the Excel file in Windows (when running via WSL)
 if grep -qi microsoft /proc/version; then
-  cmd.exe /C "cd /d C:\\ && start \"\" \"C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm\""
+  cmd.exe /C start "" "C:\\Users\\OskariSulkakoski\\OneDrive - Intragen\\excel\\exercise_data.xlsm\""
 fi

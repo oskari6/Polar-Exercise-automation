@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "mobile-app",
+    "slug": "mobile-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "mobileapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oskarisulkakoski.mobileapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "web": {
+      "output": "single"
+    },
+    "experiments": {
+      "reactCompiler": true
+    },
+    "android": {
+      "package": "com.oskarisulkakoski.mobileapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5272faec-3bb2-4483-9e30-dc8e70195599"
+      }
+    }
+  }
+}

@@ -6,7 +6,7 @@ r = redis_client = redis.Redis(
     port=int(os.getenv("REDIS_PORT", 6379)),
     decode_responses=True
 )
-redis_key = "exercise:2025"
+redis_key = "exercise:2026"
 
 entries = r.lrange(redis_key, 0, -1)
 

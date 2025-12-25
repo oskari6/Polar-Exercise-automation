@@ -163,7 +163,7 @@ def save_to_redis(training_data):
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         distance = data.get("distance")
         start_time = data.get("start_time")
-        weekday = datetime.now().strftime("%a")
+        weekday = datetime.strptime(start_time, "%Y-%m-%d").strftime("%a")
         duration = data.get("duration")
 
         if data.get("treadmill"):
@@ -262,10 +262,12 @@ def insert_data():
     book.save(xlsm_file)
 
 # main fetch
-def fetch_data():
+def fetch_data(fetch_exercises_only = False):
     training_data = []
     access_token = get_access_token()
     exercises = accesslink.get_exercises(access_token=access_token)
+    if fetch_exercises_only:
+        return exercises
     training_data = parallel_process(exercises, access_token)
 
     if training_data:

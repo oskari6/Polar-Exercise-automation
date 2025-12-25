@@ -2,5 +2,11 @@
   "python.REPL.enableREPLSmartSend": false,
   "workbench.editor.enablePreview": false,
   "workbench.editor.enablePreviewFromQuickOpen": false,
-  "workbench.editor.enablePreviewFromCodeNavigation": false
+  "workbench.editor.enablePreviewFromCodeNavigation": false,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit",
+    "source.addMissingImports": "explicit"
+  }
 }
