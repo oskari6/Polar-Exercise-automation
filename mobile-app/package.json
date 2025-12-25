@@ -3,7 +3,7 @@
   "main": "expo/AppEntry",
   "version": "1.0.0",
   "scripts": {
-    "start": "npx expo start -c",
+    "start": "npx expo start --tunnel -c",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

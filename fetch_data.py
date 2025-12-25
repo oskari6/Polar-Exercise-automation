@@ -21,11 +21,16 @@ from threading import Lock
 import pandas as pd
 from openpyxl import load_workbook
 import json
+import boto3
 
 CONFIG_FILENAME = "config.yml"
-TOKEN_FILENAME = "usertokens.yml"
 
 config = load_config(CONFIG_FILENAME)
+
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name="eu-north-1"
+)
 
 accesslink = AccessLink(client_id=config['client_id'],
                         client_secret=config['client_secret'],
@@ -40,14 +45,6 @@ redis_client = redis.Redis(
 def log(msg):
     now = datetime.now()
     print(f"{now:%m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:01d} {msg}")
-
-def get_access_token():
-    usertokens = None
-    if exists(TOKEN_FILENAME):
-        usertokens = load_config(TOKEN_FILENAME)
-    if usertokens is None:
-        usertokens = {"tokens": []}
-    return usertokens["tokens"][0]['access_token']
 
 def parse_iso8601_duration(duration):
     """Convert ISO 8601 duration (PT3766S) to total seconds."""
@@ -149,7 +146,23 @@ def process_exercise(exercise, training_data, access_token, exercise_ids):
             "treadmill": is_treadmill
         })
 
+def get_additional_data():
+    table = dynamodb.Table("TrainingEntries")
+    response = table.scan()
+    items = response.get("Items", [])
+
+    # Handle pagination
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        items.extend(response.get("Items", []))
+
+    return {item["exercise_id"]: item for item in items}
+
 def save_to_redis(training_data):
+    additional_data = get_additional_data()
+
     pipeline = redis_client.pipeline()
     rows = 0
 
@@ -160,22 +173,28 @@ def save_to_redis(training_data):
 
     for data in training_data_sorted:
         rows += 1
+        exercise_id = data.get("exercise_id")
         year = datetime.strptime(data['start_time'], "%Y-%m-%d").year
         distance = data.get("distance")
         start_time = data.get("start_time")
         weekday = datetime.strptime(start_time, "%Y-%m-%d").strftime("%a")
         duration = data.get("duration")
+        additional_row = additional_data.get(exercise_id)
 
         if data.get("treadmill"):
             while True:
                 try:
-                    distance = float(input(f"Enter distance for {start_time} ({weekday}, duration: {duration}): "))
+                    distance_from_db = additional_row.get("distance")
+                    if distance_from_db is not None:
+                        distance = distance_from_db
+                    else:
+                        distance = float(input(f"Enter distance for {start_time} ({weekday}, duration: {duration}): "))
                     break  # Exit loop when valid input is entered
                 except ValueError:
                     log("Invalid input. Please enter a valid number.")
 
         redis_data = {
-            "exercise_id": data.get("exercise_id"),
+            "exercise_id": exercise_id,
             "timestamp": data.get("timestamp"),
             "date": start_time,
             "duration": duration,
@@ -184,6 +203,9 @@ def save_to_redis(training_data):
             "hr_max": data["hr_max"],
             "temperature": data["temperature"],
             "wind_speed": data["wind_speed"],
+            "rpe": additional_row.get("rpe"),
+            "shoes": additional_row.get("shoes").strip(),
+            "notes": additional_row.get("notes").strip(),
         }
 
         pipeline.rpush(f"exercise:{year}", json.dumps(redis_data))
@@ -241,7 +263,18 @@ def insert_data():
         log("No new data to append.")
         exit(2)
 
-    df = df[["exercise_id","timestamp","date", "duration", "distance", "hr_avg", "hr_max","temperature", "wind_speed"]]
+    df = df[["exercise_id",
+        "timestamp",
+        "date",
+        "duration",
+        "distance",
+        "hr_avg",
+        "hr_max",
+        "temperature",
+        "wind_speed",
+        "rpe",
+        "shoes",
+        "notes"]]
     df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
     df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
     df["wind_speed"] = pd.to_numeric(df["wind_speed"],errors="coerce")
@@ -249,22 +282,63 @@ def insert_data():
 
     df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
 
-    last_row = max((i for i, row in enumerate(sheet.iter_rows(values_only=True), 1) if any(row[:3])), default=1)
+    EXCEL_COLUMN_MAP = {
+        "exercise_id": 1,   # A (if present, else remove)
+        "timestamp": 2,     # or shift if exercise_id not shown
+        "date": 3,
+        "duration": 4,
+        "distance": 5,
+        "hr_avg": 6,
+        "hr_max": 7,
+        # column 8 = pace avg (SKIP)
+        "temperature": 9,
+        "wind_speed": 10,
+        "rpe": 12,
+        "shoes": 13,
+        "notes": 14,
+    }
+
+    last_row = 1
+    for i, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+        if row[0] is not None:
+            last_row = i
 
     #Append the filtered data
-    for i, row in enumerate(df.itertuples(index=False), start=last_row+1):
-        for col, value in enumerate(row, start=1):  # Start from column 1 (A)
+    for i, record in enumerate(df.to_dict("records"), start=last_row + 1):
+        for field, col in EXCEL_COLUMN_MAP.items():
+            value = record.get(field)
             cell = sheet.cell(row=i, column=col, value=value)
 
-            if col == 3 and pd.notnull(value):
-                cell.number_format = 'DD-MMM'
+            if field == "date" and value is not None:
+                cell.number_format = "DD-MMM"
 
     book.save(xlsm_file)
+
+def clear_table():
+    table = dynamodb.Table("TrainingEntries")
+
+    response = table.scan(ProjectionExpression="id")
+
+    with table.batch_writer() as batch:
+        for item in response["Items"]:
+            batch.delete_item(
+                Key={"id": item["id"]}
+            )
+
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ProjectionExpression="id",
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+        )
+        with table.batch_writer() as batch:
+            for item in response["Items"]:
+                batch.delete_item(
+                    Key={"id": item["id"]})
 
 # main fetch
 def fetch_data(fetch_exercises_only = False):
     training_data = []
-    access_token = get_access_token()
+    access_token = config["access_token"]
     exercises = accesslink.get_exercises(access_token=access_token)
     if fetch_exercises_only:
         return exercises
@@ -274,7 +348,9 @@ def fetch_data(fetch_exercises_only = False):
         save_to_redis(training_data)
         log("Inserting data...")
         insert_data()
-        log("Data successfully written to the workbook!")
+        log("Data successfully written to the workbook")
+        clear_table()
+        log("DynamoDB table cleared")
         return sys.exit(0)
     return sys.exit(2)
 

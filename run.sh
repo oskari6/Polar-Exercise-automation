@@ -26,7 +26,7 @@ fi
 
 set +e
 echo "$(date +"%F %T") Running fetch script inside app container..." >> "$LOG_FILE"
-docker compose run --rm -it app python fetch_data.py 2>&1 | tee -a "$LOG_FILE"
+docker compose run --rm app python fetch_data.py 2>&1 | tee -a "$LOG_FILE"
 FETCH_ERROR=$?
 set -e
 
@@ -38,7 +38,7 @@ elif [ "$FETCH_ERROR" -eq 2 ]; then
     docker cp "$TMP_RESTORE" "$DUMP_FILE"
 else
     echo "$(date +"%F %T") Creating Redis dump..." >> "$LOG_FILE"
-    docker exec redis-server redis-cli BGSAVE >> "$LOG_FILE" 2>&1
+    docker exec redis-server redis-cli SAVE >> "$LOG_FILE" 2>&1
   
     echo "$(date +"%F %T") Creating Redis backup..." >> "$LOG_FILE"
     BACKUP_FILE="$BACKUP_DIR/dump_$(date +%F_%H-%M-%S).rdb"

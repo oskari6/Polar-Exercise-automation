@@ -17,6 +17,9 @@ services:
     environment:
       - REDIS_HOST=redis-server
       - REDIS_PORT=6379
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_DEFAULT_REGION
     volumes:
       - .:/app
       - "/mnt/c/Users/OskariSulkakoski/OneDrive - Intragen/excel:/app/host_excel"

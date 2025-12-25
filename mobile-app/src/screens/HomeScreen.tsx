@@ -1,16 +1,16 @@
-import { Picker } from "@react-native-picker/picker";
 import React, { useEffect, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
+import Select from "../components/Select";
 import { Exercise } from "../types";
 
 interface DataRequest {
@@ -45,7 +45,7 @@ export default function HomeScreen() {
         const res = await fetchExercises();
 
         if (isMounted) {
-          setExercises(res);
+          setExercises([...res].reverse());
         }
       } catch (err) {
         setError("Error fetching exercises: " + err);
@@ -98,29 +98,8 @@ export default function HomeScreen() {
     return true;
   };
 
-  const formatStartTime = (iso: string) => {
-    const d = new Date(iso);
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-
-    return `${day}/${month} ${hours}:${minutes}`;
-  };
-
-  const formatDuration = (iso: string) => {
-    const match = iso.match(/PT(\d+)S/);
-    let seconds = match ? Number(match[1]) : 0;
-
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
-
   return (
-    <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+    <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -133,30 +112,17 @@ export default function HomeScreen() {
           <View style={styles.form}>
             <View style={styles.field}>
               <Text style={styles.label}>Exercise</Text>
-              <Picker
-                style={{ padding: 5, borderColor: "#ccc", borderRadius: 5 }}
-                onValueChange={(value: string) =>
-                  setFormData({
-                    ...formData,
-                    exercise_id: value,
-                  })
-                }
-              >
-                <Picker.Item label="Select exercise" value={null} />
-                {exercises.map((exercise, i) => (
-                  <Picker.Item
-                    key={i + 1}
-                    label={`${formatDuration(
-                      exercise.duration
-                    )} - ${formatStartTime(exercise.start_time)}`}
-                    value={exercise.id}
-                  />
-                ))}
-              </Picker>
+              <Select
+                value={formData.exercise_id}
+                exercises={exercises}
+                onChange={(id) => setFormData({ ...formData, exercise_id: id })}
+                styles={styles}
+              />
             </View>
             <View style={styles.field}>
               <Text style={styles.label}>Distance</Text>
               <TextInput
+                returnKeyType="done"
                 keyboardType="numeric"
                 onChangeText={(value) =>
                   setFormData({
@@ -170,6 +136,7 @@ export default function HomeScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>RPE</Text>
               <TextInput
+                returnKeyType="done"
                 keyboardType="numeric"
                 onChangeText={(value) =>
                   setFormData({
@@ -183,6 +150,7 @@ export default function HomeScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Shoes</Text>
               <TextInput
+                returnKeyType="done"
                 autoCapitalize="none"
                 onChangeText={(value) =>
                   setFormData({
@@ -196,6 +164,9 @@ export default function HomeScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>Notes</Text>
               <TextInput
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={Keyboard.dismiss}
                 onChangeText={(value) =>
                   setFormData({
                     ...formData,
@@ -220,7 +191,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </Pressable>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -263,14 +234,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     padding: 20,
-    justifyContent: "center",
   },
   form: {
     gap: 16,
   },
 
   field: {
-    alignItems: "center",
     gap: 6,
   },
 
