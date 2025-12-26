@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#ffffff",
     padding: 20,
   },
   form: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#000",
   },
 
   input: {
