@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -10,7 +12,8 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import Select from "../components/Select";
+import Select, { Item } from "../components/Select";
+import RefreshSVG from "../svg/RefreshSVG";
 import { Exercise } from "../types";
 
 interface DataRequest {
@@ -36,23 +39,27 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [showDistance, setShowDistance] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const loadExercises = async (isMounted: boolean) => {
+    try {
+      setIsLoading(true);
+      const res = await fetchExercises();
+
+      if (isMounted) {
+        setExercises([...res].reverse());
+      }
+    } catch (err) {
+      setError("Error fetching exercises: " + err);
+    }
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadExercises = async () => {
-      try {
-        const res = await fetchExercises();
-
-        if (isMounted) {
-          setExercises([...res].reverse());
-        }
-      } catch (err) {
-        setError("Error fetching exercises: " + err);
-      }
-    };
-
-    loadExercises();
+    loadExercises(isMounted);
 
     return () => {
       isMounted = false;
@@ -61,9 +68,9 @@ export default function HomeScreen() {
 
   const onSubmit = async () => {
     try {
+      setIsLoading(true);
       if (validate()) {
-        const response = await sendFormData(formData);
-        console.log(response);
+        await sendFormData(formData);
         setFormData(defaultData);
         setSuccess("Entry created!");
       }
@@ -72,10 +79,14 @@ export default function HomeScreen() {
       Keyboard.dismiss();
     }
     Keyboard.dismiss();
+    setIsLoading(false);
   };
 
   const validate = () => {
-    if (!formData.distance || isNaN(Number(formData.distance))) {
+    if (
+      showDistance &&
+      (!formData.distance || isNaN(Number(formData.distance)))
+    ) {
       setError("Distance must be a number");
       return false;
     }
@@ -99,99 +110,127 @@ export default function HomeScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
-      >
-        <View style={styles.wrapper}>
-          <View style={[styles.field, { position: "absolute", top: 0 }]}>
-            <Text>Version 1.0</Text>
-          </View>
-          <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Exercise</Text>
-              <Select
-                value={formData.exercise_id}
-                exercises={exercises}
-                onChange={(id) => setFormData({ ...formData, exercise_id: id })}
-                styles={styles}
-              />
+    <>
+      <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+        >
+          <View style={styles.wrapper}>
+            <View style={[styles.field, { position: "absolute", top: 0 }]}>
+              <Text>Version 1.0</Text>
             </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>Distance</Text>
-              <TextInput
-                returnKeyType="done"
-                keyboardType="numeric"
-                onChangeText={(value) =>
-                  setFormData({
-                    ...formData,
-                    distance: Number(value),
-                  })
-                }
-                style={[styles.input, { width: 75 }]}
-              />
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>RPE</Text>
-              <TextInput
-                returnKeyType="done"
-                keyboardType="numeric"
-                onChangeText={(value) =>
-                  setFormData({
-                    ...formData,
-                    rpe: Number(value),
-                  })
-                }
-                style={[styles.input, { width: 75 }]}
-              />
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>Shoes</Text>
-              <TextInput
-                returnKeyType="done"
-                autoCapitalize="none"
-                onChangeText={(value) =>
-                  setFormData({
-                    ...formData,
-                    shoes: value,
-                  })
-                }
-                style={[styles.input, { width: 100 }]}
-              />
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.label}>Notes</Text>
-              <TextInput
-                returnKeyType="done"
-                blurOnSubmit={true}
-                onSubmitEditing={Keyboard.dismiss}
-                onChangeText={(value) =>
-                  setFormData({
-                    ...formData,
-                    notes: value,
-                  })
-                }
-                style={[styles.input, styles.textArea]}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={onSubmit} style={styles.button}>
-                <Text style={styles.buttonText}>Submit</Text>
-              </TouchableOpacity>
-              <View style={{ paddingTop: 10 }}>
-                {error && <Text>{error}</Text>}
-                {success && <Text>{success}</Text>}
+            <View style={styles.form}>
+              <View style={styles.field}>
+                <Text style={styles.label}>Exercise</Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
+                >
+                  <Select
+                    value={formData.exercise_id}
+                    exercises={exercises}
+                    onChange={(exercise: Item) => {
+                      setFormData({ ...formData, exercise_id: exercise.id });
+                      setShowDistance(exercise.sport === "TREADMILL_RUNNING");
+                    }}
+                    styles={styles}
+                  />
+                  <Pressable
+                    onPress={() => loadExercises(false)}
+                    style={({ hovered }: any) => [
+                      {
+                        backgroundColor: hovered ? "#f5f5f5" : "#ffffff",
+                        padding: 5,
+                        borderRadius: 5,
+                      },
+                    ]}
+                  >
+                    <RefreshSVG />
+                  </Pressable>
+                </View>
+              </View>
+              {showDistance && (
+                <View style={styles.field}>
+                  <Text style={styles.label}>Distance</Text>
+                  <TextInput
+                    returnKeyType="done"
+                    keyboardType="numeric"
+                    onChangeText={(value) =>
+                      setFormData({
+                        ...formData,
+                        distance: Number(value),
+                      })
+                    }
+                    style={[styles.input, { width: 75 }]}
+                  />
+                </View>
+              )}
+              <View style={styles.field}>
+                <Text style={styles.label}>RPE</Text>
+                <TextInput
+                  returnKeyType="done"
+                  keyboardType="numeric"
+                  onChangeText={(value) =>
+                    setFormData({
+                      ...formData,
+                      rpe: Number(value),
+                    })
+                  }
+                  style={[styles.input, { width: 75 }]}
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Shoes</Text>
+                <TextInput
+                  returnKeyType="done"
+                  autoCapitalize="none"
+                  onChangeText={(value) =>
+                    setFormData({
+                      ...formData,
+                      shoes: value,
+                    })
+                  }
+                  style={[styles.input, { width: 100 }]}
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>Notes</Text>
+                <TextInput
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={Keyboard.dismiss}
+                  onChangeText={(value) =>
+                    setFormData({
+                      ...formData,
+                      notes: value,
+                    })
+                  }
+                  style={[styles.input, styles.textArea]}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity onPress={onSubmit} style={styles.button}>
+                  <Text style={styles.buttonText}>Submit</Text>
+                </TouchableOpacity>
+                <View style={{ paddingTop: 10 }}>
+                  {error && <Text>{error}</Text>}
+                  {success && <Text>{success}</Text>}
+                </View>
               </View>
             </View>
           </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+      {isLoading && (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color="#000" />
         </View>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+      )}
+    </>
   );
 }
 
@@ -229,10 +268,17 @@ const sendFormData = async (formData: DataRequest) => {
 };
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
   wrapper: {
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#1E1E1E",
     padding: 20,
   },
   form: {
@@ -246,7 +292,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: "#ffffff",
   },
 
   input: {
@@ -270,16 +316,14 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: "#83ffb2ff",
+    backgroundColor: "#68bd88ff",
     padding: 10,
     borderRadius: 10,
     alignItems: "center",
-    width: 100,
   },
 
   buttonText: {
     color: "#fff",
-    fontSize: 18,
     fontWeight: "bold",
   },
 });

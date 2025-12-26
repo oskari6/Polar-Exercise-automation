@@ -9,16 +9,17 @@ import {
   View,
 } from "react-native";
 
-type Item = {
+export type Item = {
   id: string;
   start_time: string;
   duration: string;
+  sport: string;
 };
 
 type Props = {
   value: string;
   exercises: Item[];
-  onChange: (id: string) => void;
+  onChange: (exercise: Item) => void;
   styles: any;
 };
 
@@ -71,7 +72,7 @@ export default function Select({ value, exercises, onChange }: Props) {
                   key={exercise.id}
                   style={styles.modalItem}
                   onPress={() => {
-                    onChange(exercise.id);
+                    onChange(exercise);
                     setOpen(false);
                   }}
                 >
@@ -131,19 +132,17 @@ const styles = StyleSheet.create({
   },
 
   cancel: {
-    backgroundColor: "red",
+    backgroundColor: "#db4e4eff",
     padding: 10,
     borderRadius: 10,
     color: "white",
     textAlign: "center",
     marginTop: 10,
     marginBottom: 30,
-    fontSize: 18,
     fontWeight: "bold",
   },
   buttonText: {
     color: "#fff",
-    fontSize: 18,
     fontWeight: "bold",
   },
 });
