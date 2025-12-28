@@ -290,12 +290,12 @@ def insert_data():
         "distance": 5,
         "hr_avg": 6,
         "hr_max": 7,
-        # column 8 = pace avg (SKIP)
-        "temperature": 9,
-        "wind_speed": 10,
-        "rpe": 12,
-        "shoes": 13,
-        "notes": 14,
+        "temperature": 8,
+        "wind_speed": 9,
+        # column 10 = pace avg (SKIP)
+        "rpe": 11,
+        "shoes": 12,
+        "notes": 13,
     }
 
     last_row = 1
