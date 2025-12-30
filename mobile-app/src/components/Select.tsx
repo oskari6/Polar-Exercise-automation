@@ -8,18 +8,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-export type Item = {
-  id: string;
-  start_time: string;
-  duration: string;
-  sport: string;
-};
+import { Exercise } from "../types";
 
 type Props = {
   value: string;
-  exercises: Item[];
-  onChange: (exercise: Item) => void;
+  exercises: Exercise[];
+  onChange: (exercise: Exercise) => void;
   styles: any;
 };
 
@@ -41,12 +35,18 @@ export default function Select({ value, exercises, onChange }: Props) {
   };
 
   const formatDuration = (iso: string) => {
-    const match = iso.match(/PT(\d+)S/);
-    let seconds = match ? Number(match[1]) : 0;
+    const match = iso.match(/PT([\d.]+)S/);
+    if (!match) return "00:00";
 
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    const totalSeconds = Math.floor(Number(match[1]));
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+      2,
+      "0"
+    )}`;
   };
 
   return (
@@ -70,7 +70,15 @@ export default function Select({ value, exercises, onChange }: Props) {
               {exercises.map((exercise) => (
                 <Pressable
                   key={exercise.id}
-                  style={styles.modalItem}
+                  style={[
+                    styles.modalItem,
+                    {
+                      backgroundColor:
+                        exercise.detailed_sport_info === "TREADMILL_RUNNING"
+                          ? "#fca5a5"
+                          : "#93c5fd",
+                    },
+                  ]}
                   onPress={() => {
                     onChange(exercise);
                     setOpen(false);

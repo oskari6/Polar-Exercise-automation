@@ -12,7 +12,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import Select, { Item } from "../components/Select";
+import Select from "../components/Select";
 import RefreshSVG from "../svg/RefreshSVG";
 import { Exercise } from "../types";
 
@@ -39,7 +39,7 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [showDistance, setShowDistance] = useState<boolean>(true);
+  const [showDistance, setShowDistance] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const loadExercises = async (isMounted: boolean) => {
@@ -108,7 +108,7 @@ export default function HomeScreen() {
     setError("");
     return true;
   };
-
+  console.log(showDistance);
   return (
     <>
       <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
@@ -130,9 +130,12 @@ export default function HomeScreen() {
                   <Select
                     value={formData.exercise_id}
                     exercises={exercises}
-                    onChange={(exercise: Item) => {
+                    onChange={(exercise: Exercise) => {
                       setFormData({ ...formData, exercise_id: exercise.id });
-                      setShowDistance(exercise.sport === "TREADMILL_RUNNING");
+                      console.log(exercise.detailed_sport_info);
+                      setShowDistance(
+                        exercise.detailed_sport_info === "TREADMILL_RUNNING"
+                      );
                     }}
                     styles={styles}
                   />
@@ -234,7 +237,7 @@ export default function HomeScreen() {
   );
 }
 
-const fetchExercises = async () => {
+const fetchExercises = async (): Promise<Exercise[]> => {
   try {
     const response = await fetch(`${BASE_URL}/exercises`, {
       method: "GET",
