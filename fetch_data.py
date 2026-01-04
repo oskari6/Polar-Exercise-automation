@@ -221,7 +221,11 @@ def get_exercise_ids(year):
 def parallel_process(exercises, access_token):
     training_data = []
     lock = Lock()
-    ids = get_exercise_ids(datetime.now().year)
+    current_year = datetime.now().year
+    years = [current_year - 1, current_year]
+    ids = set()
+    for y in years:
+        ids.update(get_exercise_ids(y))
 
     def wrapped_process(exercise):
         local_data = []
@@ -236,81 +240,67 @@ def parallel_process(exercises, access_token):
     return training_data
 
 def insert_data():
-    year = datetime.now().year
     xlsm_file = "host_excel/exercise_data.xlsm"
     book = load_workbook(xlsm_file, keep_vba=True)
-    sheet = book[str(year)]
 
-    workbook_exercise_ids = set(
-        row[0] for row in sheet.iter_rows(min_row=2, values_only=True) if row[0]
-    )
+    for redis_key in redis_client.scan_iter("exercise:*"):
+        year = redis_key.split(":")[1]
 
-    redis_key = f"exercise:{year}"
-    if not redis_client.exists(redis_key):
-        log(f"Warning: No Redis list found for {year}. Nothing to insert.")
-        return
+        sheet = book[str(year)]
 
-    raw_entries = redis_client.lrange(redis_key, 0, -1)
-    data = []
-    for raw in raw_entries:
-        entry = json.loads(raw)
-        if entry.get("exercise_id") not in workbook_exercise_ids:
-            data.append(entry)
+        workbook_exercise_ids = set(
+            row[0] for row in sheet.iter_rows(min_row=2, values_only=True) if row[0]
+        )
 
-    #Convert the filtered data to a DataFrame
-    df = pd.DataFrame(data)
-    if df.empty:
-        log("No new data to append.")
-        exit(2)
+        raw_entries = redis_client.lrange(redis_key, 0, -1)
+        data = []
+        for raw in raw_entries:
+            if not raw:
+                continue
 
-    df = df[["exercise_id",
-        "timestamp",
-        "date",
-        "duration",
-        "distance",
-        "hr_avg",
-        "hr_max",
-        "temperature",
-        "wind_speed",
-        "rpe",
-        "shoes",
-        "notes"]]
-    df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
-    df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
-    df["wind_speed"] = pd.to_numeric(df["wind_speed"],errors="coerce")
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+            try:
+                entry = json.loads(raw)
+            except json.JSONDecodeError:
+                log(f"Skipping invalid Redis entry in {redis_key}: {raw!r}")
+                continue
 
-    df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
+            exercise_id = entry.get("exercise_id")
+            if not exercise_id:
+                continue
 
-    EXCEL_COLUMN_MAP = {
-        "exercise_id": 1,   # A (if present, else remove)
-        "timestamp": 2,     # or shift if exercise_id not shown
-        "date": 3,
-        "duration": 4,
-        "distance": 5,
-        "hr_avg": 6,
-        "hr_max": 7,
-        "temperature": 8,
-        "wind_speed": 9,
-        # column 10 = pace avg (SKIP)
-        "rpe": 11,
-        "shoes": 12,
-        "notes": 13,
-    }
+            if exercise_id not in workbook_exercise_ids:
+                data.append(entry)
 
-    last_row = 1
-    for i, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
-        if row[0] is not None:
-            last_row = i
+        if not data:
+            log("No new data to append.")
+            exit(2)
 
-    #Append the filtered data
-    for i, record in enumerate(df.to_dict("records"), start=last_row + 1):
-        for field, col in EXCEL_COLUMN_MAP.items():
-            value = record.get(field)
-            cell = sheet.cell(row=i, column=col, value=value)
+        df = pd.DataFrame(data)
+        df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
+        df["temperature"] = pd.to_numeric(df["temperature"],errors="coerce")
+        df["wind_speed"] = pd.to_numeric(df["wind_speed"],errors="coerce")
+        df["rpe"] = pd.to_numeric(df["rpe"],errors="coerce")
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df = df.sort_values(by="date", ascending=True).reset_index(drop=True)
 
-            if field == "date" and value is not None:
-                cell.number_format = "DD-MMM"
+        last_row = max(
+            (i for i, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), 2) if row[0]),
+            default=1,
+        )
+
+        for i, record in enumerate(df.to_dict("records"), start=last_row + 1):
+            sheet.cell(i, 1, record["exercise_id"])
+            sheet.cell(i, 2, record["timestamp"])
+            sheet.cell(i, 3, record["date"]).number_format = "DD-MMM"
+            sheet.cell(i, 4, record["duration"])
+            sheet.cell(i, 5, record["distance"])
+            sheet.cell(i, 6, record["hr_avg"])
+            sheet.cell(i, 7, record["hr_max"])
+            sheet.cell(i, 8, record["temperature"])
+            sheet.cell(i, 9, record["wind_speed"])
+            sheet.cell(i, 11, record["rpe"])
+            sheet.cell(i, 12, record["shoes"])
+            sheet.cell(i, 13, record["notes"])
 
     book.save(xlsm_file)
 
