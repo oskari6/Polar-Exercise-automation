@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import Select from "../components/Select";
 import RefreshSVG from "../svg/RefreshSVG";
-import { Exercise } from "../types";
+import { Exercise, SavedExercise } from "../types";
 
 interface DataRequest {
   exercise_id: string;
@@ -39,6 +39,8 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [existingExerciseIds, setExistingExerciseIds] = useState<string[]>([]);
+  const [existingExercise, setExistingExercise] = useState<SavedExercise[]>([]);
   const [showDistance, setShowDistance] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -48,7 +50,11 @@ export default function HomeScreen() {
       const res = await fetchExercises();
 
       if (isMounted) {
-        setExercises([...res].reverse());
+        const filtered = res.filter((exercise) => exercise.sport === "RUNNING");
+        const availableExercises = filtered.filter(
+          (exercise) => !existingExerciseIds.includes(exercise.id),
+        );
+        setExercises([...availableExercises].reverse());
       }
     } catch (err) {
       setError("Error fetching exercises: " + err);
@@ -56,9 +62,26 @@ export default function HomeScreen() {
     setIsLoading(false);
   };
 
+  const loadExercisesFromDB = async (isMounted: boolean) => {
+    try {
+      setIsLoading(true);
+      const res = await fetchExercisesFromDB();
+
+      if (isMounted) {
+        const existingExerciseIds = res.map((e) => e.exercise_id);
+        setExistingExerciseIds(existingExerciseIds);
+        setExistingExercise(res);
+      }
+    } catch (err) {
+      setError("Error fetching saved exercises: " + err);
+    }
+    setIsLoading(false);
+  };
+
   useEffect(() => {
     let isMounted = true;
 
+    loadExercisesFromDB(isMounted);
     loadExercises(isMounted);
 
     return () => {
@@ -108,7 +131,7 @@ export default function HomeScreen() {
     setError("");
     return true;
   };
-  console.log(showDistance);
+
   return (
     <>
       <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
@@ -123,6 +146,30 @@ export default function HomeScreen() {
             </View>
             <View style={styles.form}>
               <View style={styles.field}>
+                <Text style={styles.label}>Saved exercises</Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
+                >
+                  <Select
+                    value=""
+                    existingExercises={existingExercise}
+                    styles={styles}
+                  />
+                  <Pressable
+                    onPress={() => loadExercisesFromDB(false)}
+                    style={({ hovered }: any) => [
+                      {
+                        backgroundColor: hovered ? "#f5f5f5" : "#ffffff",
+                        padding: 5,
+                        borderRadius: 5,
+                      },
+                    ]}
+                  >
+                    <RefreshSVG />
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.field}>
                 <Text style={styles.label}>Exercise</Text>
                 <View
                   style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
@@ -132,9 +179,8 @@ export default function HomeScreen() {
                     exercises={exercises}
                     onChange={(exercise: Exercise) => {
                       setFormData({ ...formData, exercise_id: exercise.id });
-                      console.log(exercise.detailed_sport_info);
                       setShowDistance(
-                        exercise.detailed_sport_info === "TREADMILL_RUNNING"
+                        exercise.detailed_sport_info === "TREADMILL_RUNNING",
                       );
                     }}
                     styles={styles}
@@ -153,50 +199,55 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               </View>
-              {showDistance && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Distance</Text>
+
+              <View style={styles.field2}>
+                <View>
+                  <Text style={styles.label}>RPE</Text>
                   <TextInput
                     returnKeyType="done"
                     keyboardType="numeric"
                     onChangeText={(value) =>
                       setFormData({
                         ...formData,
-                        distance: Number(value),
+                        rpe: Number(value),
                       })
                     }
                     style={[styles.input, { width: 75 }]}
                   />
                 </View>
-              )}
-              <View style={styles.field}>
-                <Text style={styles.label}>RPE</Text>
-                <TextInput
-                  returnKeyType="done"
-                  keyboardType="numeric"
-                  onChangeText={(value) =>
-                    setFormData({
-                      ...formData,
-                      rpe: Number(value),
-                    })
-                  }
-                  style={[styles.input, { width: 75 }]}
-                />
+
+                <View>
+                  <Text style={styles.label}>Shoes</Text>
+                  <TextInput
+                    returnKeyType="done"
+                    autoCapitalize="none"
+                    onChangeText={(value) =>
+                      setFormData({
+                        ...formData,
+                        shoes: value,
+                      })
+                    }
+                    style={[styles.input, { width: 150 }]}
+                  />
+                </View>
+                {showDistance && (
+                  <View>
+                    <Text style={styles.label}>Distance</Text>
+                    <TextInput
+                      returnKeyType="done"
+                      keyboardType="decimal-pad"
+                      onChangeText={(value) =>
+                        setFormData({
+                          ...formData,
+                          distance: Number(value.replace(",", ".")),
+                        })
+                      }
+                      style={[styles.input, { width: 75 }]}
+                    />
+                  </View>
+                )}
               </View>
-              <View style={styles.field}>
-                <Text style={styles.label}>Shoes</Text>
-                <TextInput
-                  returnKeyType="done"
-                  autoCapitalize="none"
-                  onChangeText={(value) =>
-                    setFormData({
-                      ...formData,
-                      shoes: value,
-                    })
-                  }
-                  style={[styles.input, { width: 100 }]}
-                />
-              </View>
+
               <View style={styles.field}>
                 <Text style={styles.label}>Notes</Text>
                 <TextInput
@@ -253,6 +304,22 @@ const fetchExercises = async (): Promise<Exercise[]> => {
   }
 };
 
+const fetchExercisesFromDB = async (): Promise<SavedExercise[]> => {
+  try {
+    const response = await fetch(`${BASE_URL}/db/exercises`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error("Request failed");
+    }
+
+    return response.json();
+  } catch (err) {
+    throw err;
+  }
+};
+
 const sendFormData = async (formData: DataRequest) => {
   try {
     const response = await fetch(`${BASE_URL}/entry`, {
@@ -286,10 +353,16 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
+    alignItems: "center",
   },
-
   field: {
     gap: 6,
+  },
+  field2: {
+    gap: 6,
+    height: 40,
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   label: {

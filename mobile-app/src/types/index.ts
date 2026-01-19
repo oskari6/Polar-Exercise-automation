@@ -26,6 +26,16 @@ export interface Exercise {
   training_load_pro?: TrainingLoadPro;
 }
 
+export interface SavedExercise {
+  id: string;
+  createdAt: string;
+  exercise_id: string;
+  distance: number;
+  rpe: number;
+  shoes: string;
+  notes: string;
+}
+
 export interface HeartRate {
   average: number;
   maximum: number;

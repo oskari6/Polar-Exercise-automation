@@ -8,19 +8,25 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Exercise } from "../types";
+import { Exercise, SavedExercise } from "../types";
 
 type Props = {
   value: string;
-  exercises: Exercise[];
-  onChange: (exercise: Exercise) => void;
+  exercises?: Exercise[];
+  existingExercises?: SavedExercise[];
+  onChange?: (exercise: Exercise) => void;
   styles: any;
 };
 
-export default function Select({ value, exercises, onChange }: Props) {
+export default function Select({
+  value,
+  exercises,
+  existingExercises,
+  onChange,
+}: Props) {
   const [open, setOpen] = useState(false);
 
-  const selected = exercises.find((e) => e.id === value);
+  const selected = exercises?.find((e) => e.id === value);
 
   const formatStartTime = (iso: string) => {
     const d = new Date(iso);
@@ -45,7 +51,7 @@ export default function Select({ value, exercises, onChange }: Props) {
 
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
       2,
-      "0"
+      "0",
     )}`;
   };
 
@@ -55,41 +61,63 @@ export default function Select({ value, exercises, onChange }: Props) {
         <Text style={{ color: value ? "#000" : "#999" }}>
           {selected
             ? `${formatDuration(selected.duration)} – ${formatStartTime(
-                selected.start_time
+                selected.start_time,
               )}`
-            : "Select exercise"}
+            : exercises
+              ? "Select exercise"
+              : "Show saved"}
         </Text>
       </Pressable>
 
       <Modal visible={open} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Select exercise</Text>
-
+            <Text style={styles.modalTitle}>
+              {exercises ? "Select exercise" : "Saved exercises"}
+            </Text>
             <ScrollView>
-              {exercises.map((exercise) => (
-                <Pressable
-                  key={exercise.id}
-                  style={[
-                    styles.modalItem,
-                    {
-                      backgroundColor:
-                        exercise.detailed_sport_info === "TREADMILL_RUNNING"
-                          ? "#fca5a5"
-                          : "#93c5fd",
-                    },
-                  ]}
-                  onPress={() => {
-                    onChange(exercise);
-                    setOpen(false);
-                  }}
-                >
-                  <Text>
-                    {formatDuration(exercise.duration)} –{" "}
-                    {formatStartTime(exercise.start_time)}
-                  </Text>
-                </Pressable>
-              ))}
+              {existingExercises &&
+                existingExercises.map((exercise) => (
+                  <Pressable
+                    key={exercise.id}
+                    style={[styles.modalItem]}
+                    onPress={() => {
+                      setOpen(false);
+                    }}
+                  >
+                    <Text>
+                      ({exercise.distance} – )
+                      {formatStartTime(exercise.createdAt)}
+                      {exercise.id}
+                      {exercise.rpe}
+                      {exercise.shoes}
+                    </Text>
+                  </Pressable>
+                ))}
+              {exercises &&
+                exercises.map((exercise) => (
+                  <Pressable
+                    key={exercise.id}
+                    style={[
+                      styles.modalItem,
+                      {
+                        backgroundColor:
+                          exercise.detailed_sport_info === "TREADMILL_RUNNING"
+                            ? "#fca5a5"
+                            : "#93c5fd",
+                      },
+                    ]}
+                    onPress={() => {
+                      onChange && onChange(exercise);
+                      setOpen(false);
+                    }}
+                  >
+                    <Text>
+                      {formatDuration(exercise.duration)} –{" "}
+                      {formatStartTime(exercise.start_time)}
+                    </Text>
+                  </Pressable>
+                ))}
             </ScrollView>
 
             <TouchableOpacity onPress={() => setOpen(false)}>
@@ -104,7 +132,7 @@ export default function Select({ value, exercises, onChange }: Props) {
 
 const styles = StyleSheet.create({
   select: {
-    width: 300,
+    width: 180,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,

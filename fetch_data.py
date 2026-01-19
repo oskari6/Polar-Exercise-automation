@@ -243,6 +243,8 @@ def insert_data():
     xlsm_file = "host_excel/exercise_data.xlsm"
     book = load_workbook(xlsm_file, keep_vba=True)
 
+    any_appended = False
+
     for redis_key in redis_client.scan_iter("exercise:*"):
         year = redis_key.split(":")[1]
 
@@ -272,8 +274,9 @@ def insert_data():
                 data.append(entry)
 
         if not data:
-            log("No new data to append.")
-            exit(2)
+            continue
+        
+        any_appended = True
 
         df = pd.DataFrame(data)
         df["distance"] = pd.to_numeric(df["distance"],errors="coerce")
@@ -303,6 +306,10 @@ def insert_data():
             sheet.cell(i, 13, record["notes"])
 
     book.save(xlsm_file)
+
+    if not any_appended:
+        log("No data to insert.")
+        exit(2)
 
 def clear_table():
     table = dynamodb.Table("TrainingEntries")
