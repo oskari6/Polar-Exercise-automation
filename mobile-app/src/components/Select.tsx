@@ -78,21 +78,14 @@ export default function Select({
             <ScrollView>
               {existingExercises &&
                 existingExercises.map((exercise) => (
-                  <Pressable
-                    key={exercise.id}
-                    style={[styles.modalItem]}
-                    onPress={() => {
-                      setOpen(false);
-                    }}
-                  >
+                  <View key={exercise.id} style={[styles.modalItem]}>
                     <Text>
-                      ({exercise.distance} – )
-                      {formatStartTime(exercise.createdAt)}
-                      {exercise.id}
-                      {exercise.rpe}
-                      {exercise.shoes}
+                      ({exercise.distance ? "tm" : exercise.distance}){" "}
+                      {formatStartTime(exercise.createdAt)} ({exercise.shoes}){" "}
+                      <Text style={{ color: "red" }}>{exercise.rpe}</Text>
                     </Text>
-                  </Pressable>
+                    <Text>{exercise.notes}</Text>
+                  </View>
                 ))}
               {exercises &&
                 exercises.map((exercise) => (

@@ -91,17 +91,17 @@ export default function HomeScreen() {
 
   const onSubmit = async () => {
     try {
+      Keyboard.dismiss();
       setIsLoading(true);
       if (validate()) {
         await sendFormData(formData);
         setFormData(defaultData);
         setSuccess("Entry created!");
+        loadExercisesFromDB(true);
       }
     } catch (err: any) {
       setError("Error: " + err);
-      Keyboard.dismiss();
     }
-    Keyboard.dismiss();
     setIsLoading(false);
   };
 
