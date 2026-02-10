@@ -34,6 +34,7 @@ export interface SavedExercise {
   rpe: number;
   shoes: string;
   notes: string;
+  startTime: string;
 }
 
 export interface HeartRate {

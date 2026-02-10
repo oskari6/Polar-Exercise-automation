@@ -8,52 +8,59 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Exercise, SavedExercise } from "../types";
+import { Exercise } from "../types";
 
 type Props = {
   value: string;
   exercises?: Exercise[];
-  existingExercises?: SavedExercise[];
+  savedExerciseIds?: string[];
   onChange?: (exercise: Exercise) => void;
   styles: any;
 };
 
+export const formatStartTime = (iso: string) => {
+  const d = new Date(iso);
+
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month} ${hours}:${minutes}`;
+};
+
+export const formatDuration = (iso: string) => {
+  const match = iso.match(/PT([\d.]+)S/);
+  if (!match) return "00:00";
+
+  const totalSeconds = Math.floor(Number(match[1]));
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0",
+  )}`;
+};
+
+export const formatWeekday = (iso: string) => {
+  const d = new Date(iso);
+
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+  });
+};
 export default function Select({
   value,
   exercises,
-  existingExercises,
+  savedExerciseIds,
   onChange,
 }: Props) {
   const [open, setOpen] = useState(false);
 
   const selected = exercises?.find((e) => e.id === value);
-
-  const formatStartTime = (iso: string) => {
-    const d = new Date(iso);
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-
-    return `${day}/${month} ${hours}:${minutes}`;
-  };
-
-  const formatDuration = (iso: string) => {
-    const match = iso.match(/PT([\d.]+)S/);
-    if (!match) return "00:00";
-
-    const totalSeconds = Math.floor(Number(match[1]));
-
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-      2,
-      "0",
-    )}`;
-  };
 
   return (
     <>
@@ -72,21 +79,8 @@ export default function Select({
       <Modal visible={open} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>
-              {exercises ? "Select exercise" : "Saved exercises"}
-            </Text>
-            <ScrollView>
-              {existingExercises &&
-                existingExercises.map((exercise) => (
-                  <View key={exercise.id} style={[styles.modalItem]}>
-                    <Text>
-                      ({exercise.distance ? "tm" : exercise.distance}){" "}
-                      {formatStartTime(exercise.createdAt)} ({exercise.shoes}){" "}
-                      <Text style={{ color: "red" }}>{exercise.rpe}</Text>
-                    </Text>
-                    <Text>{exercise.notes}</Text>
-                  </View>
-                ))}
+            <Text style={styles.modalTitle}>Select exercise</Text>
+            <ScrollView style={{ borderRadius: 5, width: 200 }}>
               {exercises &&
                 exercises.map((exercise) => (
                   <Pressable
@@ -94,13 +88,17 @@ export default function Select({
                     style={[
                       styles.modalItem,
                       {
-                        backgroundColor:
-                          exercise.detailed_sport_info === "TREADMILL_RUNNING"
+                        backgroundColor: savedExerciseIds?.includes(exercise.id)
+                          ? "#76de9c"
+                          : exercise.detailed_sport_info === "TREADMILL_RUNNING"
                             ? "#fca5a5"
                             : "#93c5fd",
                       },
                     ]}
                     onPress={() => {
+                      if (savedExerciseIds?.includes(exercise.id)) {
+                        return;
+                      }
                       onChange && onChange(exercise);
                       setOpen(false);
                     }}

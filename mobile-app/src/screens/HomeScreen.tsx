@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { RootStackParamList } from "@/App";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -13,6 +15,7 @@ import {
   View,
 } from "react-native";
 import Select from "../components/Select";
+import { useExercises } from "../context/ExerciseContext";
 import RefreshSVG from "../svg/RefreshSVG";
 import { Exercise, SavedExercise } from "../types";
 
@@ -22,6 +25,7 @@ interface DataRequest {
   rpe: number;
   shoes: string;
   notes: string;
+  startTime: string;
 }
 
 const defaultData = {
@@ -30,19 +34,25 @@ const defaultData = {
   rpe: 0,
   shoes: "",
   notes: "",
+  startTime: "",
 };
 
 const BASE_URL = "https://1ctbza9x84.execute-api.eu-north-1.amazonaws.com/prod";
+type Props = NativeStackScreenProps<RootStackParamList, "HomeScreen">;
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: Props) {
   const [formData, setFormData] = useState<DataRequest>(defaultData);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [existingExerciseIds, setExistingExerciseIds] = useState<string[]>([]);
-  const [existingExercise, setExistingExercise] = useState<SavedExercise[]>([]);
+  const [savedExerciseIds, setSavedExerciseIds] = useState<string[]>([]);
+  const { exercises, setSavedExercises, setExercises } = useExercises();
   const [showDistance, setShowDistance] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const rpeRef = useRef<TextInput>(null);
+  const shoesRef = useRef<TextInput>(null);
+  const distanceRef = useRef<TextInput>(null);
+  const notesRef = useRef<TextInput>(null);
 
   const loadExercises = async (isMounted: boolean) => {
     try {
@@ -51,10 +61,7 @@ export default function HomeScreen() {
 
       if (isMounted) {
         const filtered = res.filter((exercise) => exercise.sport === "RUNNING");
-        const availableExercises = filtered.filter(
-          (exercise) => !existingExerciseIds.includes(exercise.id),
-        );
-        setExercises([...availableExercises].reverse());
+        setExercises([...filtered].reverse());
       }
     } catch (err) {
       setError("Error fetching exercises: " + err);
@@ -69,8 +76,8 @@ export default function HomeScreen() {
 
       if (isMounted) {
         const existingExerciseIds = res.map((e) => e.exercise_id);
-        setExistingExerciseIds(existingExerciseIds);
-        setExistingExercise(res);
+        setSavedExerciseIds(existingExerciseIds);
+        setSavedExercises(res);
       }
     } catch (err) {
       setError("Error fetching saved exercises: " + err);
@@ -96,6 +103,7 @@ export default function HomeScreen() {
       if (validate()) {
         await sendFormData(formData);
         setFormData(defaultData);
+        setShowDistance(false);
         setSuccess("Entry created!");
         loadExercisesFromDB(true);
       }
@@ -146,30 +154,6 @@ export default function HomeScreen() {
             </View>
             <View style={styles.form}>
               <View style={styles.field}>
-                <Text style={styles.label}>Saved exercises</Text>
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
-                >
-                  <Select
-                    value=""
-                    existingExercises={existingExercise}
-                    styles={styles}
-                  />
-                  <Pressable
-                    onPress={() => loadExercisesFromDB(false)}
-                    style={({ hovered }: any) => [
-                      {
-                        backgroundColor: hovered ? "#f5f5f5" : "#ffffff",
-                        padding: 5,
-                        borderRadius: 5,
-                      },
-                    ]}
-                  >
-                    <RefreshSVG />
-                  </Pressable>
-                </View>
-              </View>
-              <View style={styles.field}>
                 <Text style={styles.label}>Exercise</Text>
                 <View
                   style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
@@ -177,8 +161,13 @@ export default function HomeScreen() {
                   <Select
                     value={formData.exercise_id}
                     exercises={exercises}
+                    savedExerciseIds={savedExerciseIds}
                     onChange={(exercise: Exercise) => {
-                      setFormData({ ...formData, exercise_id: exercise.id });
+                      setFormData({
+                        ...formData,
+                        exercise_id: exercise.id,
+                        startTime: exercise.start_time,
+                      });
                       setShowDistance(
                         exercise.detailed_sport_info === "TREADMILL_RUNNING",
                       );
@@ -204,7 +193,11 @@ export default function HomeScreen() {
                 <View>
                   <Text style={styles.label}>RPE</Text>
                   <TextInput
-                    returnKeyType="done"
+                    ref={rpeRef}
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => shoesRef.current?.focus()}
+                    value={formData.rpe ? String(formData.rpe) : ""}
+                    returnKeyType="next"
                     keyboardType="numeric"
                     onChangeText={(value) =>
                       setFormData({
@@ -219,7 +212,17 @@ export default function HomeScreen() {
                 <View>
                   <Text style={styles.label}>Shoes</Text>
                   <TextInput
-                    returnKeyType="done"
+                    ref={shoesRef}
+                    returnKeyType={showDistance ? "next" : "done"}
+                    blurOnSubmit={!showDistance}
+                    onSubmitEditing={() => {
+                      if (showDistance) {
+                        distanceRef.current?.focus();
+                      } else {
+                        Keyboard.dismiss();
+                      }
+                    }}
+                    value={formData.shoes}
                     autoCapitalize="none"
                     onChangeText={(value) =>
                       setFormData({
@@ -234,7 +237,11 @@ export default function HomeScreen() {
                   <View>
                     <Text style={styles.label}>Distance</Text>
                     <TextInput
-                      returnKeyType="done"
+                      ref={distanceRef}
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => notesRef.current?.focus()}
+                      value={formData.distance ? String(formData.distance) : ""}
+                      returnKeyType="next"
                       keyboardType="decimal-pad"
                       onChangeText={(value) =>
                         setFormData({
@@ -251,9 +258,11 @@ export default function HomeScreen() {
               <View style={styles.field}>
                 <Text style={styles.label}>Notes</Text>
                 <TextInput
-                  returnKeyType="done"
+                  ref={notesRef}
                   blurOnSubmit={true}
                   onSubmitEditing={Keyboard.dismiss}
+                  value={formData.notes}
+                  returnKeyType="done"
                   onChangeText={(value) =>
                     setFormData({
                       ...formData,
@@ -274,6 +283,14 @@ export default function HomeScreen() {
                   {error && <Text>{error}</Text>}
                   {success && <Text>{success}</Text>}
                 </View>
+              </View>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("HistoryScreen")}
+                  style={styles.button2}
+                >
+                  <Text style={styles.buttonText}>History</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -387,17 +404,21 @@ const styles = StyleSheet.create({
   },
 
   buttonContainer: {
-    paddingTop: 10,
     alignItems: "center",
   },
 
   button: {
     backgroundColor: "#68bd88ff",
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 5,
     alignItems: "center",
   },
-
+  button2: {
+    backgroundColor: "#555",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
