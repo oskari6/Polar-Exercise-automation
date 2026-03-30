@@ -42,6 +42,33 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
+def parallel_process(exercises, access_token):
+    training_data = []
+    lock = Lock()
+    current_year = datetime.now().year
+    years = [current_year - 1, current_year]
+    ids = set()
+    for y in years:
+        ids.update(get_exercise_ids(y))
+
+    def wrapped_process(exercise):
+        local_data = []
+        process_exercise(exercise, local_data, access_token, ids)
+        if local_data:
+            with lock:
+                training_data.extend(local_data)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        executor.map(wrapped_process, exercises)
+
+    return training_data
+
+def get_exercise_ids(year):
+    redis_key = f"exercise:{year}"
+    raw_entries = redis_client.lrange(redis_key, 0, -1)
+    return [json.loads(raw).get("exercise_id") for raw in raw_entries if raw]
+    
+
 def log(msg):
     now = datetime.now()
     print(f"{now:%m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:01d} {msg}")
@@ -179,7 +206,7 @@ def save_to_redis(training_data):
         start_time = data.get("start_time")
         weekday = datetime.strptime(start_time, "%Y-%m-%d").strftime("%a")
         duration = data.get("duration")
-        additional_row = additional_data.get(exercise_id)
+        additional_row = additional_data.get(exercise_id, {})
 
         if data.get("treadmill"):
             while True:
@@ -203,41 +230,15 @@ def save_to_redis(training_data):
             "hr_max": data["hr_max"],
             "temperature": data["temperature"],
             "wind_speed": data["wind_speed"],
-            "rpe": additional_row.get("rpe"),
-            "shoes": additional_row.get("shoes").strip(),
-            "notes": additional_row.get("notes").strip(),
+            "rpe": additional_row.get("rpe", ""),
+            "shoes": additional_row.get("shoes", "").strip(),
+            "notes": additional_row.get("notes", "").strip(),
         }
 
         pipeline.rpush(f"exercise:{year}", json.dumps(redis_data))
 
     pipeline.execute()
     log(f"{rows} row(s) inserted to redis.")
-
-def get_exercise_ids(year):
-    redis_key = f"exercise:{year}"
-    raw_entries = redis_client.lrange(redis_key, 0, -1)
-    return [json.loads(raw).get("exercise_id") for raw in raw_entries if raw]
-
-def parallel_process(exercises, access_token):
-    training_data = []
-    lock = Lock()
-    current_year = datetime.now().year
-    years = [current_year - 1, current_year]
-    ids = set()
-    for y in years:
-        ids.update(get_exercise_ids(y))
-
-    def wrapped_process(exercise):
-        local_data = []
-        process_exercise(exercise, local_data, access_token, ids)
-        if local_data:
-            with lock:
-                training_data.extend(local_data)
-
-    with ThreadPoolExecutor(max_workers=16) as executor:
-        executor.map(wrapped_process, exercises)
-
-    return training_data
 
 def insert_data():
     xlsm_file = "host_excel/exercise_data.xlsm"

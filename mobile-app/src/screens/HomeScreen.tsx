@@ -58,7 +58,8 @@ export default function HomeScreen({ navigation }: Props) {
     try {
       setIsLoading(true);
       const res = await fetchExercises();
-
+      setFormData(defaultData);
+      setShowDistance(false);
       if (isMounted) {
         const filtered = res.filter((exercise) => exercise.sport === "RUNNING");
         setExercises([...filtered].reverse());
@@ -163,14 +164,17 @@ export default function HomeScreen({ navigation }: Props) {
                     exercises={exercises}
                     savedExerciseIds={savedExerciseIds}
                     onChange={(exercise: Exercise) => {
+                      const isTreadmill =
+                        exercise.detailed_sport_info === "TREADMILL_RUNNING";
                       setFormData({
                         ...formData,
                         exercise_id: exercise.id,
                         startTime: exercise.start_time,
+                        distance: !isTreadmill
+                          ? Math.floor(exercise.distance / 1000)
+                          : 0,
                       });
-                      setShowDistance(
-                        exercise.detailed_sport_info === "TREADMILL_RUNNING",
-                      );
+                      setShowDistance(isTreadmill);
                     }}
                     styles={styles}
                   />
