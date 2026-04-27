@@ -1,11 +1,6 @@
-from meteostat import Hourly, Stations
+import requests
+from datetime import datetime
 import pytz
-import pandas as pd
-from datetime import datetime, timedelta
-
-def log(msg):
-    now = datetime.now()
-    print(f"{now:%a %m/%d/%Y %H:%M:%S}.{now.microsecond // 1000:02d} {msg}")
 
 def fetch_weather(lat, lon, start):
     try:
@@ -13,24 +8,39 @@ def fetch_weather(lat, lon, start):
         lon = float(lon)
 
         timezone = pytz.timezone("Europe/Helsinki")
-        start = pd.to_datetime(start).tz_localize(timezone).tz_convert(None)
-        end = start + timedelta(hours=1)
-        
-        stations = Stations().nearby(lat, lon)
-        station_df = stations.fetch(20)
+        start_dt = datetime.fromisoformat(start)
+        start_dt = timezone.localize(start_dt)
 
-        if station_df.empty:
-            log("No stations with recent hourly data found.")
+        date_str = start_dt.strftime("%Y-%m-%d")
+        hour_str = start_dt.strftime("%H:00")
+
+        url = "https://api.open-meteo.com/v1/forecast"
+
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "hourly": "temperature_2m,windspeed_10m",
+            "start_date": date_str,
+            "end_date": date_str,
+            "timezone": "Europe/Helsinki",
+            "windspeed_unit": "ms"
+        }
+
+        res = requests.get(url, params=params)
+        data = res.json()
+
+        times = data["hourly"]["time"]
+
+        if hour_str not in [t[-5:] for t in times]:
             return None
-        
-        for station_id in station_df.index:
-            data = Hourly(station_id, start, end).fetch()
-            if not data.empty:
-                return {
-                    "temperature": data["temp"].iloc[0] if "temp" in data.columns else "",
-                    "wind_speed": float(data["wspd"].iloc[0]) if "wspd" in data.columns else "",
-                }
-        log("No usable weather data found in top 5 nearby stations.")
+
+        index = next(i for i, t in enumerate(times) if t.endswith(hour_str))
+
+        return {
+            "temperature": data["hourly"]["temperature_2m"][index],
+            "wind_speed": data["hourly"]["windspeed_10m"][index],
+        }
+
     except Exception as e:
-        log(f"Error fetching weather data: {e}")
-    return None
+        print(f"Error fetching weather: {e}")
+        return None
