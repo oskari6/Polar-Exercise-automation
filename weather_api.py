@@ -19,11 +19,11 @@ def fetch_weather(lat, lon, start):
         params = {
             "latitude": lat,
             "longitude": lon,
-            "hourly": "temperature_2m,windspeed_10m",
+            "hourly": "temperature_2m,wind_speed_10m",
             "start_date": date_str,
             "end_date": date_str,
             "timezone": "Europe/Helsinki",
-            "windspeed_unit": "ms"
+            "wind_speed_unit": "ms"
         }
 
         res = requests.get(url, params=params)
@@ -38,7 +38,7 @@ def fetch_weather(lat, lon, start):
 
         return {
             "temperature": data["hourly"]["temperature_2m"][index],
-            "wind_speed": data["hourly"]["windspeed_10m"][index],
+            "wind_speed": data["hourly"]["wind_speed_10m"][index],
         }
 
     except Exception as e:
